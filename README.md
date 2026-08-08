@@ -1,0 +1,3 @@
+yet another pomodoro timer & app blocker...
+
+built because I'm unhappy with the forest app and because I like art and making cute things
