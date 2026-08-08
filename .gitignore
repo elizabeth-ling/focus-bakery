@@ -3,3 +3,8 @@
 # Licensed art pack (Modern Interiors, LimeZu) - redistribution prohibited.
 # Never commit these. See feature-specs/14-art-asset-pipeline.md.
 /assets/
+
+# Atlases sliced from that pack. The licence forbids distributing the asset
+# "edited or not", so derived atlases are build artifacts, not commits.
+# Regenerate: python3 tools/atlas/build_atlases.py
+/Resources/*.atlas/

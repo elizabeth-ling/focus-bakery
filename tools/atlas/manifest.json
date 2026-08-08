@@ -1,0 +1,88 @@
+{
+  "$comment": [
+    "Declarative slice list for the Modern Interiors pack (LimeZu).",
+    "Paths are relative to pack_root. Geometry here is MEASURED, not assumed --",
+    "see tools/atlas/README.md for how each number was verified.",
+    "This file contains no pixels, only coordinates, so it is safe to commit.",
+    "The atlases it produces are NOT safe to commit; see .gitignore."
+  ],
+
+  "pack_root": "assets",
+  "output_root": "Resources",
+  "tile": 32,
+  "shadow_variant": "shadowless",
+
+  "atlases": {
+    "Baker": {
+      "kind": "character",
+      "$comment": [
+        "Layer order is the pack's documented BODY > EYES > OUTFIT > HAIRSTYLE >",
+        "ACCESSORY (CHARACTER_GENERATOR.txt). A premade collapses the first four,",
+        "so only the accessory is layered on top. Keeping this a list rather than a",
+        "single flattened file is what preserves the option of customization later."
+      ],
+      "layers": [
+        "2_Characters/Character_Generator/0_Premade_Characters/32x32/Premade_Character_32x32_01.png",
+        "2_Characters/Character_Generator/Accessories/32x32/Accessory_18_Chef_32x32_01.png"
+      ],
+      "frame": [32, 64],
+      "grid": [56, 20],
+      "$directions_comment": [
+        "Column blocks run counter-clockwise from east: right, up, left, down.",
+        "Verified with the gift row, where the held box sits right of the body in",
+        "block 0 and left of it in block 2. Spec 14 claimed down/up/left/right;",
+        "using that order silently swaps the baker's facing."
+      ],
+      "directions": ["right", "up", "left", "down"],
+      "animations": {
+        "idle":   { "row": 1,  "frames_per_direction": 6 },
+        "walk":   { "row": 2,  "frames_per_direction": 6 },
+        "pickup": { "row": 9,  "frames_per_direction": 12 },
+        "lift":   { "row": 11, "frames_per_direction": 14 }
+      }
+    },
+
+    "Bakery": {
+      "kind": "strips",
+      "$comment": [
+        "Fixtures whose animation carries the 'something is baking' signal (05).",
+        "The full room fixture list is deliberately absent: it is a layout task",
+        "gated on the per-device room dimensions from 01."
+      ],
+      "entries": {
+        "oven": {
+          "path": "3_Animated_objects/32x32/spritesheets/animated_grocery_store_bakery_industrial_oven_up_32x32.png",
+          "frame": [64, 96]
+        },
+        "oven_front": {
+          "path": "3_Animated_objects/32x32/spritesheets/animated_grocery_store_bakery_industrial_oven_down_32x32.png",
+          "frame": [64, 96]
+        },
+        "case": {
+          "path": "3_Animated_objects/32x32/spritesheets/animated_canteen_fridge_cake_1_32x32.png",
+          "frame": [32, 96]
+        }
+      }
+    },
+
+    "Treats": {
+      "kind": "singles",
+      "$comment": [
+        "PROVISIONAL. The final 5-6 recipes are an open question in 07; these are",
+        "the pack's most legible standalone treats at 32x32, which is the order 07",
+        "asks for (pick from what the pack renders well, not names first).",
+        "Theme folder names are just the pack's sorting -- 'Christmas' cookies are",
+        "not seasonally styled."
+      ],
+      "entries": {
+        "cookie": "1_Interiors/32x32/Theme_Sorter_Shadowless_Singles_32x32/15_Christmas_Singles_Shadowless_32x32/Christmas_Singles_Shadowless_32x32_121.png",
+        "croissant": "1_Interiors/32x32/Theme_Sorter_Shadowless_Singles_32x32/15_Christmas_Singles_Shadowless_32x32/Christmas_Singles_Shadowless_32x32_108.png",
+        "bread": "1_Interiors/32x32/Theme_Sorter_Shadowless_Singles_32x32/12_Kitchen_Singles_Shadowless_32x32/Kitchen_Singles_Shadowless_32x32_214.png",
+        "donut": "1_Interiors/32x32/Theme_Sorter_Shadowless_Singles_32x32/12_Kitchen_Singles_Shadowless_32x32/Kitchen_Singles_Shadowless_32x32_401.png",
+        "donut_chocolate": "1_Interiors/32x32/Theme_Sorter_Shadowless_Singles_32x32/12_Kitchen_Singles_Shadowless_32x32/Kitchen_Singles_Shadowless_32x32_400.png",
+        "cake": "1_Interiors/32x32/Theme_Sorter_Shadowless_Singles_32x32/10_Birthday_Party_Singles_Shadowless_32x32/Birthday_Party_Singles_Shadowless_32x32_11.png",
+        "tart": "1_Interiors/32x32/Theme_Sorter_Shadowless_Singles_32x32/16_Grocery_Store_Singles_Shadowless_32x32/Grocery_Store_Singles_Shadowless_32x32_219.png"
+      }
+    }
+  }
+}
