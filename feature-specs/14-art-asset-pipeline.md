@@ -57,9 +57,24 @@ scaling helper in `01`, not hardcoded here.
 Frame geometry is derived from image dimensions; these are measured, not assumed.
 
 - **Character sheets** — `2_Characters/Character_Generator/**/32x32/`. Each sheet
-  is 1792×1312 = **56 × 41 frames of 32×32**. Row meanings are documented in
-  `Spritesheet_animations_GUIDE.png`; read it before slicing. Each animation runs
-  4 directions (down, up, left, right).
+  is 1792×1312, but the frames are **32 wide × 64 tall** — a character is one
+  tile wide and two tall. That is a **56 × 20** frame grid filling the top
+  1792×1280, plus a trailing 32px empty strip. **Slicing these at 32×32 cuts
+  every character in half at the waist.** Row meanings are documented in
+  `Spritesheet_animations_GUIDE.png`; read it before slicing.
+  - Row 0 is a 4-frame standing pose, one per direction; rows 1–19 are the
+    animations in guide order (idle, walk, sleep, sit, sit, phone, book, push
+    cart, pick up, gift, lift, throw, then the combat set).
+  - Each animation row is four equal column blocks running **right, up, left,
+    down** — counter-clockwise from east. Verified against the gift row, where
+    the held box sits right of the body in block 0 and left in block 2. Using
+    the wrong order silently mirrors the baker.
+  - Frames per direction vary by animation (idle and walk 6, pick up 12, lift
+    and throw 14), so it is per-animation data, not a constant.
+  - **Not every generator layer shares the sheet width.** The nine `Bodies`
+    sheets and the four `Accessory_19_Party_Cone` sheets are 1854 wide — not a
+    multiple of 32 — while the premades and every other layer are a clean 1792.
+    Compositing across that mismatch misaligns the grid.
 - **Animated objects** — horizontal frame strips whose frame size is the object's
   footprint, not one tile. Frame count = image width ÷ footprint width. Measured
   examples:
@@ -82,6 +97,13 @@ For v1, a **single pre-composited baker** is sufficient — flatten one characte
 to an atlas at build time rather than compositing five layers at runtime. Player
 character customization is out of scope; if it ever lands, the layer order above
 is what makes it possible, so do not flatten in a way that discards it.
+
+**Resolved: the baker is a premade plus the chef hat.** The pack has no chef or
+apron *outfit*, but it does have `Accessories/32x32/Accessory_18_Chef` — so a
+premade alone never reads as a baker, and the full five-layer composite is not
+needed either. A premade collapses BODY→EYES→OUTFIT→HAIRSTYLE, and the chef hat
+lays over it on the same 1792×1312 grid. That makes the baker a **two-layer
+composite**, listed in order in the atlas manifest and flattened at build time.
 
 ### There is no baking animation — plan around it
 
@@ -124,11 +146,19 @@ so it doesn't read as bolted on.
   bloats the app for no benefit.
 - Every texture loads through the single `.nearest` path from `01`. No
   exceptions, no call site opting out.
-- Prefer the **Shadowless** or **Black_Shadow** theme variants consistently —
-  mixing shadow treatments in one room is immediately visible.
-- Slicing should be reproducible. A script that regenerates atlases from
-  `assets/` beats hand-cropped PNGs pasted into the project, because the
-  slice will need revisiting.
+- **Resolved: use Shadowless.** The room is top-down and lit uniformly, depth
+  comes from y-sorted `zPosition` (`05`), and treats composite into the display
+  case (`08`) without a baked shadow darkening the shelf beneath them. Mixing
+  shadow treatments in one room is immediately visible, so this is not a
+  per-sprite call.
+- **The variant is not a flag you can flip later.** Default and Shadowless share
+  sprite numbering, but **Black_Shadow does not** — the grocery theme has
+  489/490/483 singles across the three, and `Kitchen_..._214` is a bread loaf in
+  two variants and carrots in the third. Moving to Black_Shadow means re-picking
+  every sprite by eye, so the choice is made once, up front.
+- Slicing is reproducible: `tools/atlas/build_atlases.py` regenerates every atlas
+  from `assets/` against a declarative `manifest.json`. Hand-cropped PNGs pasted
+  into the project would not survive the revisiting this slice will need.
 
 ## Licensing — binding constraints
 
@@ -142,8 +172,15 @@ From `assets/LICENSE.txt`:
 Consequences for this repo:
 
 - `assets/` is **gitignored and must stay that way.** Committing the pack to
-  a public repo is redistribution. Sliced, derived atlases used by the app are
-  fine; the source pack is not.
+  a public repo is redistribution.
+- **Generated atlases are gitignored too.** An earlier draft of this spec said
+  derived atlases were fine to commit; that reads against the licence text, which
+  prohibits distributing the asset *"edited or not"* — a sliced atlas is still
+  the asset. Shipping those pixels compiled into the app is ordinary permitted
+  use; committing them as PNGs to a repo is closer to redistribution. Since the
+  slice is reproducible anyway, treating `Resources/*.atlas/` as build artifacts
+  costs nothing and removes the question. What is committed is
+  `tools/atlas/manifest.json`, which holds coordinates and no pixels.
 - Attribution must appear **in the shipped app** — the settings footer (`13`) is
   the natural home — and in App Store metadata.
 - Anyone cloning this repo needs their own licensed copy of the pack. Say so in
@@ -156,9 +193,12 @@ Consequences for this repo:
 - [ ] No 16×16 or 48×48 asset ships.
 - [ ] Animated objects with an encoded loop range loop only that range.
 - [ ] The baker is one pre-composited atlas, not runtime-layered.
-- [ ] `assets/` is absent from `git ls-files`.
+- [ ] `assets/` is absent from `git ls-files`, and so is every generated atlas.
 - [ ] `limezu.itch.io` attribution is present in-app and in store metadata.
-- [ ] Atlas generation is reproducible from the source pack.
+- [x] Atlas generation is reproducible from the source pack —
+      `tools/atlas/build_atlases.py`, driven by `manifest.json`.
+- [x] Character frames are sliced at 32×64 on the 56×20 grid, with direction
+      blocks in right/up/left/down order.
 
 ## Gotchas
 
@@ -169,13 +209,26 @@ Consequences for this repo:
 - Reaching for 16×16 "just for this one icon" breaks the uniform-pixel rule in
   `01` at its most load-bearing point.
 - The pack being large invites browsing instead of building. The room layout is
-  already solved by the ice-cream-shop reference — start there.
+  already solved by the ice-cream-shop reference — start there. Use
+  `tools/atlas/contact_sheet.py` to find a sprite rather than opening folders;
+  the singles are numbered, not named.
+- **The reference layout does not fit the target aspect.** The ice-cream shop is
+  384×320 = 12 wide × 10 tall, but `01`'s ×2 scale on a portrait iPhone gives
+  roughly 6 wide × 13 tall. It is the right *composition* — prep at the back,
+  case mid-room, seating at the front — but it has to be re-proportioned into a
+  narrow, deep room, not copied.
+- The pack has no clean single chocolate-chip cookie, which `07` mandates as the
+  starter recipe. The closest are the Christmas theme's cookie plates
+  (`Christmas_Singles_Shadowless_32x32_120..122`). Worth a look before the
+  recipe list is fixed.
 
 ## Open questions
 
 - Which specific fixtures compose the final bakery room (a layout task, gated on
   the room dimensions from `01`).
-- Which pack sprites represent the 5–6 recipes (`07`).
-- Whether the baker is a premade character or a generated composite.
-- Whether atlas slicing is scripted or a one-time manual pass — scripted is
-  preferred above, but the cost hasn't been assessed.
+- Which pack sprites represent the 5–6 recipes (`07`). `Treats.atlas` currently
+  carries seven provisional picks; the set is not final.
+- ~~Whether the baker is a premade character or a generated composite.~~
+  Resolved: premade + chef-hat accessory, flattened at build time.
+- ~~Whether atlas slicing is scripted or a one-time manual pass.~~ Resolved:
+  scripted, in `tools/atlas/`.
