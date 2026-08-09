@@ -1,5 +1,16 @@
 .DS_Store
 
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
 # Licensed art pack (Modern Interiors, LimeZu) - redistribution prohibited.
 # Never commit these. See feature-specs/14-art-asset-pipeline.md.
 /assets/
