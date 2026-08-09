@@ -20,6 +20,15 @@ struct DisplayCaseDay: Codable, Hashable, Sendable {
         self.treats = treats
     }
 
+    /// Treats decode leniently so an id this build no longer knows about costs
+    /// one entry rather than the whole day.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        date = try container.decode(DayKey.self, forKey: .date)
+        let raw = try container.decodeIfPresent([String].self, forKey: .treats) ?? []
+        treats = raw.compactMap(RecipeID.init(rawValue:))
+    }
+
     var isEmpty: Bool { treats.isEmpty }
 
     /// The true tally, which spec 08 requires the sheet to show even when the
