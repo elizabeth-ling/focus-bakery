@@ -50,8 +50,13 @@ Native **Swift**, Apple-only. Do **not** build a web/WKWebView wrapper.
 renders state; it does not own timer or persistence logic. Taps inside the room
 travel back up to the app layer as events; the scene never presents UI itself.
 
-**Target OS:** iOS. Environment as of Aug 2026 — iOS 26 current, Xcode 26.x,
-year-based versioning. Exact deployment target is **TODO — unresolved**.
+**Target OS:** iOS. Deployment target is **iOS 17.0**, set when the project was
+created in `02` — high enough for `@Observable`, low enough not to narrow the
+audience for a first release.
+
+> The build machine runs **Xcode 16.4 / iOS 18.5 SDK**, not the Xcode 26.x this
+> spec assumed. Nothing built so far needs anything newer, but the gap is worth
+> confirming with the owner before `01` starts making rendering decisions.
 
 ## v1.0 scope — "The Bakery Opens"
 
@@ -146,16 +151,21 @@ become the thing blocking a build:
 
 ## Conventions
 
-No Xcode project exists yet. These are intended conventions — align with real
-code once it lands.
+`FocusBakery.xcodeproj` exists as of `02`, with an app target and a
+`FocusBakeryTests` unit-test target.
 
 - Standard Swift API Design Guidelines; SwiftUI-idiomatic views; keep views
   small and state out of `SKScene`.
-- Folders (proposed, TODO to confirm): `App/`, `Scene/`, `Models/`, `Timer/`,
-  `Views/`, `Resources/`.
+- Folders: `App/` and `Models/` exist. `Scene/`, `Timer/` and `Views/` are still
+  proposed and land with the specs that need them. `Resources/` holds the
+  generated atlases and is deliberately **not** in the target yet — it is
+  gitignored and absent from a fresh clone, so `01`/`05` wire it up when
+  something actually loads a texture.
 - Naming: views `…View`, SpriteKit nodes `…Node`, the scene `BakeryScene`.
-- Build/run/test commands are **TODO** until the Xcode project exists. Expect
-  `xcodebuild -scheme <name> …`; the scheme name is not yet decided.
+- Scheme: `FocusBakery`. Build and test commands are in `AGENTS.md`.
+- Tests use **Swift Testing**, not XCTest.
+- `App/`, `Models/` and `FocusBakeryTests/` are file-system-synchronized groups,
+  so adding a file does not require touching `project.pbxproj`.
 
 ## Device-only constraints
 

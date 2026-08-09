@@ -44,7 +44,9 @@ alwaysApply: true
 - Keep commits small and reviewable.
 - Build with `xcodebuild` after Swift changes to verify the app still compiles. There is no SwiftPM package here, so `swift build` and `swift test` do not apply.
 - Run the test suite via `xcodebuild test` before committing meaningful code changes.
-- Exact build and test invocations are **TODO** until the Xcode project exists (see Releases).
+- Build: `xcodebuild build -scheme FocusBakery -destination 'platform=iOS Simulator,name=iPhone 16'`
+- Test: `xcodebuild test -scheme FocusBakery -destination 'platform=iOS Simulator,name=iPhone 16'`
+- `App/`, `Models/` and `FocusBakeryTests/` are file-system-synchronized groups, so new files in them need no `.xcodeproj` edit.
 - Fix warnings before committing.
 
 ## Swift
