@@ -94,18 +94,44 @@ UserDefaults is appropriate here.
 
 ## Acceptance criteria
 
-- [ ] Killing and relaunching the app preserves coins, unlocks, streak, today's
+- [x] Killing and relaunching the app preserves coins, unlocks, streak, today's
       display case, and any in-flight session.
-- [ ] A daily reset clears the display case and leaves recipe unlocks untouched.
-- [ ] Day keys follow the local calendar and are re-derived on foreground.
-- [ ] At most one `.inProgress` session exists at any time.
-- [ ] Coin earn rates and recipe prices live in **one** place, not scattered as
+- [x] A daily reset clears the display case and leaves recipe unlocks untouched.
+- [x] Day keys follow the local calendar and are re-derived on foreground.
+- [x] At most one `.inProgress` session exists at any time.
+- [x] Coin earn rates and recipe prices live in **one** place, not scattered as
       magic numbers (see `07`).
+
+## How it is built
+
+- `DayKey` + `WallClock` (`Models/DayKey.swift`) are the single day-boundary
+  authority `08` and `09` are both required to share.
+- Three separate JSON files, each falling back to a clean value on its own:
+  `progress.json` (wallet, unlocks, streak), `today.json` (display case,
+  ritual), `session.json` (the in-flight bake).
+- `BakeryStore` owns every write. `refreshForCurrentDay()` is the lazy reset,
+  called on launch and on each foreground.
+- `Economy.swift` holds every earn rate and price.
 
 ## Open questions
 
-- SwiftData vs. `Codable`-to-disk. Either is acceptable; decide once, early, and
-  record the decision here.
-- Whether completed sessions are retained beyond the current day. v1 has no
-  history/stats screen (deferred), so retention is only needed if streak
-  evaluation requires it — which depends on the unresolved streak condition.
+- ~~SwiftData vs. `Codable`-to-disk.~~ **Resolved: `Codable` to disk**, as
+  separate JSON files in Application Support.
+  - The blast-radius rule above is the deciding factor. "Never lose the recipe
+    book if the display case data is unreadable" is one file per concern in
+    `Codable`; in SwiftData both live in one store file, and isolating partial
+    corruption means fighting the framework.
+  - `03` and `09` both require resolution to be a pure function of (persisted
+    state, current date). Plain values are trivial to construct in a test;
+    SwiftData wants a `ModelContainer` per case.
+  - The dataset is a coin count, six unlock flags, one day of treats, a streak
+    record and two strings. None of SwiftData's relational querying, migration
+    tooling or sync applies, and iCloud sync is deferred.
+- ~~Whether completed sessions are retained beyond the current day.~~
+  **Resolved: not retained.** A finished session is folded into today's totals
+  and the slot is cleared. `TodayState.focusMinutes` plus the treat count plus
+  `ritual.openedAt` cover all three candidate streak conditions in `09` — a
+  minutes target, one completed session, or simply opening the app — so none of
+  them needs session history. The rollover hands the outgoing day's totals back
+  as a `RetiredDay` so `09` can evaluate the day the reset just cleared.
+  Revisit only if the deferred history/stats screen is pulled into scope.
