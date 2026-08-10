@@ -27,6 +27,11 @@
 			path = Rendering;
 			sourceTree = "<group>";
 		};
+		FB0000000000000000000005 /* Resources */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Resources;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFileReference section */
@@ -70,6 +75,7 @@
 				FB0000000000000000000001 /* App */,
 				FB0000000000000000000002 /* Models */,
 				FB0000000000000000000004 /* Rendering */,
+				FB0000000000000000000005 /* Resources */,
 				FB0000000000000000000003 /* FocusBakeryTests */,
 				FB0000000000000000000031 /* Products */,
 			);
@@ -103,6 +109,7 @@
 				FB0000000000000000000001 /* App */,
 				FB0000000000000000000002 /* Models */,
 				FB0000000000000000000004 /* Rendering */,
+				FB0000000000000000000005 /* Resources */,
 			);
 			name = FocusBakery;
 			productName = FocusBakery;
