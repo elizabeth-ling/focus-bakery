@@ -26,6 +26,12 @@ enum PixelGrid {
     /// chrome pixel and a room pixel are the same physical size; the chrome
     /// *grid* still varies with the device, which is what makes UI fit.
     static let chromeScale = 2
+
+    /// Rounds a point value to a whole art pixel at the given scale. Every
+    /// position in the app lands on one of these.
+    static func snap(_ value: CGFloat, at scale: Int) -> CGFloat {
+        (value / CGFloat(scale)).rounded() * CGFloat(scale)
+    }
 }
 
 /// Resolves an available size into a whole-number scale, whole tiles, and the
@@ -76,7 +82,7 @@ struct RoomLayout: Equatable {
     /// Rounds to a whole art pixel. Sprite positions go through this so no
     /// sprite ever straddles a source pixel.
     func snap(_ value: CGFloat) -> CGFloat {
-        (value / CGFloat(scale)).rounded() * CGFloat(scale)
+        PixelGrid.snap(value, at: scale)
     }
 
     func snap(_ point: CGPoint) -> CGPoint {
