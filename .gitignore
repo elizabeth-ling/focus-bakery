@@ -19,3 +19,9 @@ xcuserdata/
 # "edited or not", so derived atlases are build artifacts, not commits.
 # Regenerate: python3 tools/atlas/build_atlases.py
 /Resources/*.atlas/
+
+# ...except the font, which is not the pack. The pack ships no font at all
+# (14), so FocusPixel is authored in this repo from tools/font/glyphs.py and
+# carries none of LimeZu's pixels. Committing it keeps the app buildable
+# without Python for anyone who only wants to run it.
+!/Resources/Font.atlas/
