@@ -7,7 +7,7 @@ struct FocusBakeryApp: App {
 
     var body: some Scene {
         WindowGroup {
-            PersistencePlaceholderView()
+            root
                 .environment(store)
                 .task { openBakery() }
         }
@@ -16,6 +16,23 @@ struct FocusBakeryApp: App {
             // timezone may have changed while the app was backgrounded.
             guard phase == .active else { return }
             openBakery()
+        }
+    }
+
+    /// Spec 01's screenshot criterion has to judge the scene full-bleed, with no
+    /// system chrome beside its bitmap text, so the proof surface is selected at
+    /// launch rather than navigated to — both scaffolds stay reachable and
+    /// neither has to host the other:
+    ///
+    ///     xcrun simctl launch <device> com.focusbakery.FocusBakery -pixelProof
+    ///
+    /// Temporary, with `PixelProofView` and `PersistencePlaceholderView` both.
+    @ViewBuilder
+    private var root: some View {
+        if ProcessInfo.processInfo.arguments.contains("-pixelProof") {
+            PixelProofView()
+        } else {
+            PersistencePlaceholderView()
         }
     }
 
