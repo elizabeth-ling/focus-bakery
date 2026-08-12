@@ -85,21 +85,47 @@ Three tiers exist; v1 uses two of them and keeps them physically apart.
   (`14`) — this must be authored or sourced. Aseprite handles bitmap-font export.
 - A bundled pixel TTF wired up for chrome — also not in the pack.
 - Atlases stored as Xcode `.atlas` folders, sliced from the pack per `14`.
+- A movement primitive that steps sprites in whole art pixels, so rule 4 has an
+  implementation and not just a prohibition — `05`'s walk choreography is built
+  on it.
 
 ## Acceptance criteria
 
-- [ ] A bitmap `00:00` renders crisply, with visibly uniform pixel size, on at
+- [x] A bitmap `00:00` renders crisply, with visibly uniform pixel size, on at
       least three device sizes spanning the smallest and largest supported
       iPhones — verified by screenshot inspection at native resolution.
-- [ ] No texture in the app renders with linear filtering. Verifiable by
+- [x] No texture in the app renders with linear filtering. Verifiable by
       inspection: every load path sets `.nearest`.
-- [ ] Every SwiftUI `Image` displaying pixel art uses `.interpolation(.none)`.
-- [ ] Scale factor is always a whole number; edge margin absorbs the remainder.
-- [ ] One tile measures exactly 32 art pixels everywhere in the app; no 16×16 or
+- [x] Every SwiftUI `Image` displaying pixel art uses `.interpolation(.none)`.
+- [x] Scale factor is always a whole number; edge margin absorbs the remainder.
+- [x] One tile measures exactly 32 art pixels everywhere in the app; no 16×16 or
       48×48 asset is used (`14`).
-- [ ] A sprite animated across the scene shows no shimmer — movement lands on
+- [x] A sprite animated across the scene shows no shimmer — movement lands on
       whole grid units every frame.
-- [ ] No `SKLabelNode` is used for timer digits, coin counts, or ♦ quantities.
+- [x] No `SKLabelNode` is used for timer digits, coin counts, or ♦ quantities.
+
+### How the first and sixth were checked
+
+Both are "verified by looking", so `PixelProofView` exists to be looked at —
+launch with `-pixelProof` and it renders the resolved room, `00:00`, and a baker
+walking, and nothing else. It is temporary; `06` replaces it.
+
+Screenshots were taken at native resolution on the **iPhone SE (3rd gen)**
+(750×1334, @2x), **iPhone 16** (1179×2556, @3x) and **iPhone 16 Pro Max**
+(1320×2868, @3x) — the ends of the supported range plus a middle, and both
+device scale factors.
+
+Eyeballing a screenshot proves less than it looks like it does, so the images
+were also measured. In every one, each run of glyph ink is an exact multiple of
+the block size (8px on the SE, 12px on the @3x devices for `00:00`), on both
+axes, and the only colours present are the two source colours — interpolation
+would have invented intermediate shades along every edge, and a fractional scale
+would have made some runs one pixel wider than others. A burst of frames taken
+while the baker crossed the room put its leading edge on the art-pixel grid in
+every single frame.
+
+The screenshots themselves are deliberately **not** committed: they contain pack
+art, and `14`'s licence forbids redistributing it.
 
 ## Gotchas
 
@@ -117,7 +143,28 @@ Three tiers exist; v1 uses two of them and keeps them physically apart.
 
 ## Open questions
 
-- Chrome's "1 art pixel = N points" constant.
-- Whether scale ×2 holds across every supported device or larger devices step to
-  ×3 (which would show *fewer*, bigger tiles — a design call, not just math).
-- Deployment target, which bounds the device sizes this must be proven against.
+- ~~Deployment target, which bounds the device sizes this must be proven
+  against.~~ **Resolved: iOS 17.0, iPhone only, portrait only.** That makes the
+  range the iPhone SE (375×667pt) through the 16 Pro Max (440×956pt), which is
+  the span the criteria above were proven across. Answered first because the
+  other two questions are arithmetic over this set.
+- ~~Whether scale ×2 holds across every supported device or larger devices step
+  to ×3.~~ **Resolved: ×2 everywhere.** ×3 is not rejected by arithmetic — a Pro
+  Max fits 4×9 whole tiles at ×3 — but by what those tiles have to hold. A room
+  needs a back of house and a front of house with a case row between them (`05`),
+  and `PixelGrid.smallestUsefulRoom` puts the floor at 5×8. Every supported
+  iPhone fails that at ×3 and clears it at ×2, so the resolver never reaches for
+  ×3 and the design call collapses into the layout constraint. The candidate
+  scales stay in the resolver because the answer is a consequence of the device
+  set, not a constant — a larger canvas would legitimately step up.
+- ~~Chrome's "1 art pixel = N points" constant.~~ **Resolved: N = 2**, matching
+  the room. Chrome is free to differ, since the system lays it out and the two
+  tiers are kept physically apart anyway — but a chrome pixel and a room pixel
+  being different physical sizes on the same screen is exactly the mismatch the
+  text-tier rule is about, and there is no reason to invite it. The chrome
+  *grid* still varies with the device, which is what makes UI fit; only the pixel
+  size is pinned.
+  - The knock-on is that chrome text is a fixed size rather than Dynamic Type,
+    because a fractional point size puts glyph edges between pixels. `13` owns
+    whether accessibility sizes override that. It is a real trade-off, and it is
+    the one open question this spec hands forward rather than closes.
