@@ -64,7 +64,7 @@ Three tiers exist; v1 uses two of them and keeps them physically apart.
 
 | Tier | Use | Why |
 |---|---|---|
-| **Bitmap font** (glyph atlas drawn as sprites) | **All in-scene text**: timer digits, coin counts, ★ quantities, "baking…" tag | Text becomes literally the same pixels as the art. Guaranteed uniform. This is what real pixel games do. |
+| **Bitmap font** (glyph atlas drawn as sprites) | **All in-scene text**: timer digits, coin counts, ♦ quantities, "baking…" tag | Text becomes literally the same pixels as the art. Guaranteed uniform. This is what real pixel games do. |
 | **Pixel TTF** via `.font(.custom(...))` | **Chrome only**: settings, menus | Convenient, not grid-perfect. Acceptable off-scene. |
 | Pixel TTF rendered to a texture at exact native size | Not used in v1 | Crisp only if you hit native size exactly; the bitmap font is strictly better here. |
 
@@ -99,7 +99,7 @@ Three tiers exist; v1 uses two of them and keeps them physically apart.
       48×48 asset is used (`14`).
 - [ ] A sprite animated across the scene shows no shimmer — movement lands on
       whole grid units every frame.
-- [ ] No `SKLabelNode` is used for timer digits, coin counts, or ★ quantities.
+- [ ] No `SKLabelNode` is used for timer digits, coin counts, or ♦ quantities.
 
 ## Gotchas
 

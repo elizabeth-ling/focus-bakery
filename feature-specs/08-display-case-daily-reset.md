@@ -34,7 +34,7 @@ The pack provides the case art directly: `24_Ice_Cream_Shop` and
 - A completed session adds its treat to the case, in completion order (`02`).
 - The treat becomes visible **at the end of the baker's deliver walk** (`05`),
   not at the instant the timer fires.
-- Multiple bakes of the same recipe accumulate as quantities — shown with ★
+- Multiple bakes of the same recipe accumulate as quantities — shown with ♦
   quantities in bitmap text where in-scene (`01`), and as counts in the sheet.
 - A burned session adds nothing, and the baker skips the deliver walk entirely.
 

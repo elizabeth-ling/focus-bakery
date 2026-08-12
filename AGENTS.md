@@ -71,5 +71,5 @@ alwaysApply: true
 - Taps inside the scene travel back up to the app layer as events. The scene does not present sheets or mutate model state.
 - Every texture loads through the single `filteringMode = .nearest` path. No call site opts out.
 - Snap sprite positions to whole grid units and animate in whole grid units. Sub-pixel motion shimmers.
-- Never use `SKLabelNode` for timer digits, coin counts, or ★ quantities — those are bitmap-font sprites.
+- Never use `SKLabelNode` for timer digits, coin counts, or ♦ quantities — those are bitmap-font sprites.
 

@@ -37,7 +37,7 @@ same app.
   communicates state (`05`). Reduced motion must not mean "state changes become
   invisible."
 - **VoiceOver** — every control labeled. Critically: the **bitmap text is not
-  text** to the system. Timer digits, coin counts, and ★ quantities are sprites,
+  text** to the system. Timer digits, coin counts, and ♦ quantities are sprites,
   so they need explicit accessibility labels and values, or they simply don't
   exist to a VoiceOver user.
 - **The room is sprites too.** With the main screen now a top-down scene (`06`),
