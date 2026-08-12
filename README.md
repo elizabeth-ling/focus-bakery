@@ -1,3 +1,5 @@
-yet another pomodoro timer & app blocker...
+**yet another pomodoro timer & app blocker...**
 
-built because I'm unhappy with the forest app and because I like art and making cute things
+my attempt at building an app with a *soul*
+
+built because I got fed up with Forest after using it for 8 years and because I like making cute things
