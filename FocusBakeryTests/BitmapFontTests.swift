@@ -8,16 +8,17 @@ import Testing
 @MainActor
 @Suite("Bitmap font")
 struct BitmapFontTests {
-    let font = BitmapFont.focusPixel
+    let font = BitmapFont.scene
 
     @Test("The metrics load from the bundle")
     func metricsLoad() {
         #expect(font.ascent == 7)
-        #expect(font.descent == 2)
-        #expect(font.cellHeight == 9)
+        #expect(font.descent == 1)
+        #expect(font.cellHeight == 8)
         #expect(font.glyphs.count > 70)
         #expect(font.glyph(for: "0") != nil)
-        #expect(font.glyph(for: "★") != nil)
+        // ♦ stands in for ★: the pack has no star glyph at any size.
+        #expect(font.glyph(for: "♦") != nil)
         #expect(font.glyph(for: "…") != nil)
     }
 
@@ -63,7 +64,7 @@ struct BitmapFontTests {
         let node = BitmapTextNode("00:00", scale: 2)
 
         #expect(node.children.count == 5)
-        #expect(node.size == CGSize(width: CGFloat(font.width(of: "00:00")) * 2, height: 18))
+        #expect(node.size == CGSize(width: CGFloat(font.width(of: "00:00")) * 2, height: 16))
 
         for child in node.children {
             #expect(child.position.x.truncatingRemainder(dividingBy: 2) == 0)

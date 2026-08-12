@@ -39,7 +39,7 @@ struct BitmapFont: Decodable, Sendable {
         return max(0, advances - (text.isEmpty ? 0 : tracking))
     }
 
-    static let focusPixel: BitmapFont = load()
+    static let scene: BitmapFont = load()
 
     private static func load() -> BitmapFont {
         let logger = Logger(subsystem: "com.focusbakery.FocusBakery", category: "rendering")
@@ -59,8 +59,8 @@ struct BitmapFont: Decodable, Sendable {
 
     private init() {
         ascent = 7
-        descent = 2
-        tracking = 1
+        descent = 1
+        tracking = 0
         leading = 2
         glyphs = [:]
     }
@@ -86,7 +86,7 @@ struct BitmapFont: Decodable, Sendable {
 
 /// A line of in-scene text, drawn as one sprite per glyph.
 ///
-/// Spec 01 bans `SKLabelNode` for timer digits, coin counts and ★ quantities,
+/// Spec 01 bans `SKLabelNode` for timer digits, coin counts and ♦ quantities,
 /// and this is the reason it can be banned: the text here is literally the same
 /// pixels as the art, magnified by the same whole number, positioned on the
 /// same grid. A system label would antialias and sub-pixel-position its glyphs
@@ -111,7 +111,7 @@ final class BitmapTextNode: SKNode {
         _ text: String,
         scale: Int,
         color: SKColor = .white,
-        font: BitmapFont = .focusPixel
+        font: BitmapFont = .scene
     ) {
         self.text = text
         self.font = font

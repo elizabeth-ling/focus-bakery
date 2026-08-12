@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Build the FocusPixel bitmap atlas, its metrics, and the chrome TTF.
+"""Build the bitmap atlas and its metrics, and stage the chrome TTF.
 
 Spec 01 needs two text tiers and the art pack ships neither (14). Both come out
-of glyphs.py here, so the in-scene bitmap text and the chrome font are the same
+of one file in the Ultimate Oldschool PC Font Pack: the in-scene atlas is
+rasterized from it and the chrome tier *is* it, so the two tiers are the same
 font by construction rather than by discipline.
 
     python3 tools/font/build_font.py                  # write all three outputs
     python3 tools/font/build_font.py --check          # validate, write nothing
     python3 tools/font/build_font.py --preview /tmp/f.png
 
-Outputs (Resources/): Font.atlas/*.png, Font.json, FocusPixel.ttf.
+Outputs (Resources/): Font.atlas/*.png, Font.json, PxPlus_IBM_CGA.ttf.
 Requires Pillow and fontTools.
 """
 from __future__ import annotations
@@ -20,61 +21,89 @@ import pathlib
 import shutil
 import sys
 
-from PIL import Image
-
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from glyphs import ASCENT, DESCENT, GLYPHS, LEADING, TRACKING  # noqa: E402
+from PIL import Image, ImageDraw, ImageFont
+from fontTools.ttLib import TTFont
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 OUT = REPO / "Resources"
+SOURCE = REPO / "assets/7_Fonts/ttf - Px (pixel outline)/PxPlus_IBM_CGA.ttf"
 
-FAMILY = "FocusPixel"
-POSTSCRIPT_NAME = "FocusPixel-Regular"
-VERSION = "1.000"
-
-# TTF units per art pixel. The em is the full 9-row cell, so a chrome font size
-# of 9 x N points renders one art pixel as exactly N points.
+# Px fonts are pixel outlines: one art pixel is exactly 100 font units and the
+# em is the full cell, so rasterizing at ppem = upem/100 is bit-exact rather
+# than a resampling. Everything below is derived from the file, not asserted
+# about it -- swapping SOURCE for another Px font is meant to just work.
 UNITS_PER_PIXEL = 100
-UPEM = (ASCENT + DESCENT) * UNITS_PER_PIXEL
 
-INK = "#"
-BLANK = "."
+# The pack has no star at any size (checked across all 361 Px fonts), so ♦
+# stands in for ★ quantities. Every other character the app draws is present.
+CHARS = (
+    " 0123456789"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "abcdefghijklmnopqrstuvwxyz"
+    ".,:!?'-+/%()×♦…"
+)
+
+# The cell is monospaced and already carries its own right-hand gap, so a line
+# of text needs no extra tracking on top of it.
+TRACKING = 0
+LEADING = 2
 
 
 class BuildError(Exception):
     pass
 
 
-def validate(char: str, rows: list[str]) -> int:
-    if len(rows) not in (ASCENT, ASCENT + DESCENT):
-        raise BuildError(
-            f"{char!r}: {len(rows)} rows; expected {ASCENT}, or {ASCENT + DESCENT} to descend"
-        )
-    width = len(rows[0])
-    if width == 0:
-        raise BuildError(f"{char!r}: zero width")
-    for i, row in enumerate(rows):
-        if len(row) != width:
-            raise BuildError(f"{char!r}: row {i} is {len(row)} wide, glyph is {width}")
-        if set(row) - {INK, BLANK}:
-            raise BuildError(f"{char!r}: row {i} has characters outside {INK!r}{BLANK!r}")
-    return width
+class Source:
+    """The pack font, reduced to the handful of numbers the build needs."""
+
+    def __init__(self, path: pathlib.Path):
+        if not path.exists():
+            raise BuildError(f"{path.relative_to(REPO)} is missing")
+        tt = TTFont(path)
+        head, hhea = tt["head"], tt["hhea"]
+
+        if head.unitsPerEm % UNITS_PER_PIXEL:
+            raise BuildError(
+                f"{path.name}: {head.unitsPerEm} units/em is not a whole number of "
+                f"art pixels -- is this an Ac (aspect-corrected) font?"
+            )
+
+        self.path = path
+        self.ascent = hhea.ascent // UNITS_PER_PIXEL
+        self.descent = -hhea.descent // UNITS_PER_PIXEL
+        self.cell_height = head.unitsPerEm // UNITS_PER_PIXEL
+
+        cmap = tt.getBestCmap()
+        missing = [c for c in CHARS if ord(c) not in cmap]
+        if missing:
+            raise BuildError(f"{path.name}: no glyph for {''.join(missing)!r}")
+
+        widths = {tt["hmtx"][cmap[ord(c)]][0] for c in CHARS}
+        if len(widths) != 1:
+            raise BuildError(
+                f"{path.name}: advances vary ({sorted(widths)}); the layout in "
+                f"BitmapTextNode has no left-bearing and assumes one cell width"
+            )
+        self.cell_width = widths.pop() // UNITS_PER_PIXEL
+
+        if self.ascent + self.descent != self.cell_height:
+            raise BuildError(
+                f"{path.name}: ascent {self.ascent} + descent {self.descent} "
+                f"is not the {self.cell_height}-row em"
+            )
+
+        self.font = ImageFont.truetype(str(path), self.cell_height)
+
+    def glyph_image(self, char: str) -> Image.Image:
+        """One full cell. Rendering the whole cell keeps each glyph's own
+        position inside it, which is what makes the monospaced grid line up."""
+        im = Image.new("RGBA", (self.cell_width, self.cell_height), (0, 0, 0, 0))
+        ImageDraw.Draw(im).text((0, 0), char, font=self.font, fill=(255, 255, 255, 255))
+        return im
 
 
-def padded(rows: list[str], width: int) -> list[str]:
-    """Every glyph image is the full ascent+descent cell, so in-scene layout
-    places them all from one common top edge."""
-    return list(rows) + [BLANK * width] * (ASCENT + DESCENT - len(rows))
-
-
-def glyph_image(rows: list[str], width: int) -> Image.Image:
-    im = Image.new("RGBA", (width, ASCENT + DESCENT), (0, 0, 0, 0))
-    pixels = im.load()
-    for y, row in enumerate(padded(rows, width)):
-        for x, cell in enumerate(row):
-            if cell == INK:
-                pixels[x, y] = (255, 255, 255, 255)
-    return im
+def has_ink(im: Image.Image) -> bool:
+    return im.getbbox() is not None
 
 
 def sprite_name(char: str) -> str:
@@ -83,103 +112,16 @@ def sprite_name(char: str) -> str:
     return f"glyph_{ord(char):04x}"
 
 
-def runs(row: str) -> list[tuple[int, int]]:
-    """Maximal horizontal ink runs, as (start, end-exclusive)."""
-    out: list[tuple[int, int]] = []
-    start = None
-    for x, cell in enumerate(row):
-        if cell == INK and start is None:
-            start = x
-        elif cell != INK and start is not None:
-            out.append((start, x))
-            start = None
-    if start is not None:
-        out.append((start, len(row)))
-    return out
-
-
-def build_ttf(metrics: list[dict], path: pathlib.Path) -> None:
-    from fontTools.fontBuilder import FontBuilder
-    from fontTools.pens.ttGlyphPen import TTGlyphPen
-
-    def pen_for(rows: list[str], width: int) -> TTGlyphPen:
-        pen = TTGlyphPen(None)
-        for y, row in enumerate(padded(rows, width)):
-            # Row 0 sits at the top of the ascent; the baseline is under row
-            # ASCENT-1, so descender rows land below y=0 as they should.
-            bottom = (ASCENT - y - 1) * UNITS_PER_PIXEL
-            top = bottom + UNITS_PER_PIXEL
-            for x0, x1 in runs(row):
-                left, right = x0 * UNITS_PER_PIXEL, x1 * UNITS_PER_PIXEL
-                # Clockwise, which is the filled direction for TrueType.
-                pen.moveTo((left, bottom))
-                pen.lineTo((left, top))
-                pen.lineTo((right, top))
-                pen.lineTo((right, bottom))
-                pen.closePath()
-        return pen
-
-    order = [".notdef"]
-    outlines = {".notdef": TTGlyphPen(None).glyph()}
-    hmtx = {".notdef": (5 * UNITS_PER_PIXEL, 0)}
-    cmap: dict[int, str] = {}
-
-    for entry in metrics:
-        char = entry["character"]
-        name = f"uni{ord(char):04X}"
-        order.append(name)
-        outlines[name] = pen_for(GLYPHS[char], entry["width"]).glyph()
-        hmtx[name] = (entry["advance"] * UNITS_PER_PIXEL, 0)
-        cmap[ord(char)] = name
-
-    fb = FontBuilder(UPEM, isTTF=True)
-    fb.setupGlyphOrder(order)
-    fb.setupCharacterMap(cmap)
-    fb.setupGlyf(outlines)
-    fb.setupHorizontalMetrics(hmtx)
-    fb.setupHorizontalHeader(
-        ascent=ASCENT * UNITS_PER_PIXEL,
-        descent=-DESCENT * UNITS_PER_PIXEL,
-        lineGap=UNITS_PER_PIXEL,
-    )
-    fb.setupNameTable(
-        {
-            "familyName": FAMILY,
-            "styleName": "Regular",
-            "uniqueFontIdentifier": f"{FAMILY};{VERSION}",
-            "fullName": FAMILY,
-            "psName": POSTSCRIPT_NAME,
-            "version": f"Version {VERSION}",
-            "copyright": "Focus Bakery. Authored for this project.",
-        }
-    )
-    fb.setupOS2(
-        sTypoAscender=ASCENT * UNITS_PER_PIXEL,
-        sTypoDescender=-DESCENT * UNITS_PER_PIXEL,
-        sTypoLineGap=UNITS_PER_PIXEL,
-        usWinAscent=ASCENT * UNITS_PER_PIXEL,
-        usWinDescent=DESCENT * UNITS_PER_PIXEL,
-        sxHeight=5 * UNITS_PER_PIXEL,
-        sCapHeight=ASCENT * UNITS_PER_PIXEL,
-        achVendID="FBKY",
-    )
-    fb.setupPost(isFixedPitch=0)
-    fb.save(path)
-
-
-def render_preview(lines: list[str], metrics: dict[str, dict], scale: int) -> Image.Image:
-    cell = ASCENT + DESCENT + LEADING
-    widths = [sum(metrics[c]["advance"] for c in line if c in metrics) for line in lines]
-    im = Image.new("RGBA", (max(widths) or 1, cell * len(lines)), (24, 20, 32, 255))
+def render_preview(lines: list[str], src: Source, images: dict[str, Image.Image], scale: int) -> Image.Image:
+    cell = src.cell_height + LEADING
+    advance = src.cell_width + TRACKING
+    width = max(len(line) for line in lines) * advance
+    im = Image.new("RGBA", (width or 1, cell * len(lines)), (24, 20, 32, 255))
     for row, line in enumerate(lines):
-        x = 0
-        for char in line:
-            entry = metrics.get(char)
-            if entry is None:
-                continue
-            if entry["sprite"]:
-                im.alpha_composite(glyph_image(GLYPHS[char], entry["width"]), (x, row * cell))
-            x += entry["advance"]
+        for column, char in enumerate(line):
+            glyph = images.get(char)
+            if glyph is not None:
+                im.alpha_composite(glyph, (column * advance, row * cell))
     return im.resize((im.width * scale, im.height * scale), Image.NEAREST)
 
 
@@ -189,43 +131,46 @@ def main() -> int:
     ap.add_argument("--preview", type=pathlib.Path, help="render a sample sheet here")
     args = ap.parse_args()
 
-    metrics = []
     try:
-        for char, rows in GLYPHS.items():
-            width = validate(char, rows)
-            inked = any(INK in row for row in rows)
-            metrics.append(
-                {
-                    "character": char,
-                    "sprite": sprite_name(char) if inked else None,
-                    "width": width,
-                    "advance": width + TRACKING,
-                }
-            )
+        src = Source(SOURCE)
     except BuildError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
 
-    by_char = {m["character"]: m for m in metrics}
+    images = {char: src.glyph_image(char) for char in CHARS}
+    metrics = [
+        {
+            "character": char,
+            "sprite": sprite_name(char) if has_ink(images[char]) else None,
+            "width": src.cell_width,
+            "advance": src.cell_width + TRACKING,
+        }
+        for char in CHARS
+    ]
+
     if args.preview:
         render_preview(
             [
-                "00:00  12:34  ★×9",
+                "00:00  12:34  ♦×9",
                 "ABCDEFGHIJKLM",
                 "NOPQRSTUVWXYZ",
                 "abcdefghijklm",
                 "nopqrstuvwxyz",
                 "baking…",
-                "★×3  +150 coins",
-                "Chocolate Chip Cookie (60%)",
+                "♦×3  +150 coins",
+                "Chocolate Chip (60%)",
             ],
-            by_char,
+            src,
+            images,
             scale=4,
         ).save(args.preview)
         print(f"preview: {args.preview}")
 
     if args.check:
-        print(f"validated {len(metrics)} glyphs")
+        print(
+            f"validated {len(metrics)} glyphs from {SOURCE.name} "
+            f"({src.cell_width}x{src.cell_height} cell)"
+        )
         return 0
 
     atlas_dir = OUT / "Font.atlas"
@@ -234,17 +179,15 @@ def main() -> int:
     atlas_dir.mkdir(parents=True, exist_ok=True)
     for entry in metrics:
         if entry["sprite"]:
-            glyph_image(GLYPHS[entry["character"]], entry["width"]).save(
-                atlas_dir / f"{entry['sprite']}.png"
-            )
+            images[entry["character"]].save(atlas_dir / f"{entry['sprite']}.png")
 
     (OUT / "Font.json").write_text(
         json.dumps(
             {
-                "$comment": "Generated by tools/font/build_font.py from glyphs.py. Do not hand-edit.",
+                "$comment": f"Generated by tools/font/build_font.py from {SOURCE.name}. Do not hand-edit.",
                 "atlas": "Font",
-                "ascent": ASCENT,
-                "descent": DESCENT,
+                "ascent": src.ascent,
+                "descent": src.descent,
                 "tracking": TRACKING,
                 "leading": LEADING,
                 "glyphs": metrics,
@@ -256,9 +199,13 @@ def main() -> int:
         encoding="utf-8",
     )
 
-    build_ttf(metrics, OUT / f"{FAMILY}.ttf")
+    # The chrome tier is the pack file itself -- no second build step to drift.
+    shutil.copyfile(SOURCE, OUT / SOURCE.name)
 
-    print(f"wrote {len(metrics)} glyphs to Font.atlas, Font.json, and {FAMILY}.ttf")
+    print(
+        f"wrote {len(metrics)} glyphs to Font.atlas, Font.json, and {SOURCE.name} "
+        f"({src.cell_width}x{src.cell_height} cell)"
+    )
     return 0
 
 
