@@ -26,3 +26,7 @@ xcuserdata/
 # adaptation of it and so carries the same licence -- see NOTICE.md. Committing
 # it keeps the app buildable without Python for anyone who only wants to run it.
 !/Resources/Font.atlas/
+
+# Python bytecode from the tools/ scripts.
+__pycache__/
+*.pyc
