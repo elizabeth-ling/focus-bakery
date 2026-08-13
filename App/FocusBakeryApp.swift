@@ -5,6 +5,10 @@ struct FocusBakeryApp: App {
     @State private var store = BakeryStore()
     @Environment(\.scenePhase) private var scenePhase
 
+    init() {
+        ChromeFont.register()
+    }
+
     var body: some Scene {
         WindowGroup {
             root
