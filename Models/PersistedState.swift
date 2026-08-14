@@ -73,8 +73,16 @@ struct TodayState: Codable, Sendable {
 struct SessionState: Codable, Sendable {
     var active: BakeSession?
 
-    init(active: BakeSession? = nil) {
+    /// When the app last left the foreground with this bake in flight.
+    ///
+    /// Persisted rather than held in memory because the burn has to survive
+    /// being killed while away: on the next cold launch this is the only
+    /// evidence that the user ever left (spec 03).
+    var leftForegroundAt: Date?
+
+    init(active: BakeSession? = nil, leftForegroundAt: Date? = nil) {
         self.active = active
+        self.leftForegroundAt = leftForegroundAt
     }
 
     init(from decoder: Decoder) throws {
@@ -83,6 +91,11 @@ struct SessionState: Codable, Sendable {
         // An already-resolved session in the live slot is a bug, not state to
         // restore; keeping it would let it be resolved a second time.
         active = stored?.outcome == .inProgress ? stored : nil
+        // Meaningless without a bake to burn, and keeping it would apply a stale
+        // departure to whatever is started next.
+        leftForegroundAt = active == nil
+            ? nil
+            : try container.decodeIfPresent(Date.self, forKey: .leftForegroundAt)
     }
 }
 

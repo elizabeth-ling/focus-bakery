@@ -103,6 +103,19 @@ final class BakeryStore {
 
     // MARK: - Sessions
 
+    /// The current instant from the injected clock. The countdown is a display
+    /// derived from this and the stored `endDate`, never a counter (spec 03).
+    var now: Date { clock.now() }
+
+    var resolution: SessionResolution { session.resolution(at: now) }
+
+    /// A bake that finished while the user was away and has not been shown to
+    /// them yet — the celebration, or the bad news, owed on return.
+    ///
+    /// Only the lazy path sets this. A bake the user deliberately cancelled was
+    /// just confirmed by them and needs no announcing.
+    private(set) var pendingOutcome: BakeSession?
+
     /// Returns nil when a bake is already in flight or the recipe is locked.
     @discardableResult
     func startSession(recipeID: RecipeID, durationMinutes: Int) -> BakeSession? {
@@ -112,9 +125,63 @@ final class BakeryStore {
             startDate: clock.now(),
             durationMinutes: durationMinutes
         )
-        session.active = started
+        // Replaced wholesale rather than assigned field by field, so the bake and
+        // the departure that can burn it are never set independently.
+        session = SessionState(active: started)
         sessionStore.save(session)
         return started
+    }
+
+    /// Records that the app left the foreground with a bake in flight, starting
+    /// the burn grace.
+    ///
+    /// Written to disk immediately: the user may never bring the app back, and
+    /// the next launch has no other way to know they left.
+    func noteLeftForeground() {
+        // The grace runs from the *first* departure. A second background event
+        // without an intervening return must not extend it.
+        guard session.active != nil, session.leftForegroundAt == nil else { return }
+        session.leftForegroundAt = clock.now()
+        sessionStore.save(session)
+    }
+
+    /// Applies the burn/complete policy to the in-flight bake. Returns the
+    /// session it resolved, or nil when nothing was in flight or the bake is
+    /// still going.
+    ///
+    /// Called on launch, on every foreground, and on each display tick, which is
+    /// how a bake that ended while the app was suspended resolves lazily on
+    /// return. Awarding stays exactly-once because whichever call arrives second
+    /// finds an empty slot.
+    @discardableResult
+    func resolveInFlightSession() -> BakeSession? {
+        let resolved: BakeSession?
+        switch resolution {
+        case .idle:
+            return nil
+        case .baking:
+            // Only ever reached with the app in the foreground, so the bake has
+            // survived the absence: the grace is spent per departure and never
+            // banked towards the next one.
+            clearDeparture()
+            return nil
+        case .completed:
+            resolved = finishActiveSession(as: .completed)
+        case .burned:
+            resolved = finishActiveSession(as: .burned)
+        }
+        pendingOutcome = resolved
+        return resolved
+    }
+
+    func acknowledgeOutcome() {
+        pendingOutcome = nil
+    }
+
+    private func clearDeparture() {
+        guard session.leftForegroundAt != nil else { return }
+        session.leftForegroundAt = nil
+        sessionStore.save(session)
     }
 
     /// Clears the live slot and applies the outcome.
@@ -127,7 +194,7 @@ final class BakeryStore {
         guard outcome != .inProgress, var finished = session.active else { return nil }
         finished.outcome = outcome
 
-        session.active = nil
+        session = SessionState()
         sessionStore.save(session)
 
         guard outcome == .completed else { return finished }

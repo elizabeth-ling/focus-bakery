@@ -26,6 +26,14 @@ final class TestClock: @unchecked Sendable {
     func advance(hours: Double) {
         now += hours * 3600
     }
+
+    func advance(minutes: Double) {
+        now += minutes * 60
+    }
+
+    func advance(seconds: Double) {
+        now += seconds
+    }
 }
 
 extension TimeZone {
