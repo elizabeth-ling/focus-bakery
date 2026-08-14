@@ -173,6 +173,12 @@ private struct NotificationSection: View {
             reminderTime = Self.date(from: settings.dailyReminderTime)
             await refreshPending()
         }
+        // The reconcile that follows a bake starting or ending runs after this
+        // section has already read its list, so a stale "nothing pending" would
+        // be the one thing this surface must not say.
+        .onChange(of: store.session) { _, _ in
+            Task { await refreshPending() }
+        }
         .onChange(of: isReminderOn) { _, isOn in
             settings.dailyReminderEnabled = isOn
             apply()
