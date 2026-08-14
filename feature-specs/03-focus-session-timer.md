@@ -89,10 +89,11 @@ entitlement.
 - [x] Start a session before midnight, return after — the session is intact and
       the display case has reset correctly.
 - [x] Change the device timezone mid-session — remaining time is unchanged.
-- [ ] With notifications denied, a full session still completes and awards
-      correctly. **Belongs to `04`** — nothing here imports `UserNotifications`,
-      and completion is resolved from persisted state by construction, so there
-      is no code path to deny yet. Re-check when `04` schedules anything.
+- [x] With notifications denied, a full session still completes and awards
+      correctly. **Met by `04`.** Nothing here imports `UserNotifications`, and
+      `04` never consults authorization before scheduling or resolving — it
+      schedules whatever the state asks for and lets the system decline to
+      deliver it, which is asserted directly.
 - [x] Coins and treats are awarded exactly once per completed session, even if
       completion is evaluated by both the live path and the foreground path.
 
