@@ -5,8 +5,15 @@ import SwiftUI
 /// bake, leave, come back late, kill the app, and check what survived.
 struct PersistencePlaceholderView: View {
     @Environment(BakeryStore.self) private var store
+    @State private var isShowingOutcome = false
 
     var body: some View {
+        // Read in the body itself, not only inside the alert's closures: an
+        // @Observable dependency is registered by the body pass that reads the
+        // value, and one touched only inside a closure never registers one — so
+        // an outcome resolved at launch would never reach the screen.
+        let outcome = store.pendingOutcome
+
         List {
             Section("Today") {
                 LabeledContent("Day", value: "\(store.today.date.year)-\(store.today.date.month)-\(store.today.date.day)")
@@ -22,20 +29,23 @@ struct PersistencePlaceholderView: View {
 
             BakeSection()
         }
+        // Presentation is local state synced from the store rather than a
+        // binding computed from it: SwiftUI writes `false` back on dismissal,
+        // and a binding that forwarded that write to the store would let a
+        // spurious dismissal throw away the news of a finished bake.
+        .onChange(of: outcome?.id, initial: true) { _, id in
+            isShowingOutcome = id != nil
+        }
         .alert(
-            store.pendingOutcome?.outcome == .completed ? "Your bake is ready" : "Your bake burned",
-            isPresented: Binding(
-                get: { store.pendingOutcome != nil },
-                set: { if !$0 { store.acknowledgeOutcome() } }
-            )
-        ) {
+            outcome?.outcome == .completed ? "Your bake is ready" : "Your bake burned",
+            isPresented: $isShowingOutcome,
+            presenting: outcome
+        ) { _ in
             Button("OK") { store.acknowledgeOutcome() }
-        } message: {
-            if let outcome = store.pendingOutcome {
-                Text(outcome.outcome == .completed
-                     ? "\(RecipeCatalog.recipe(for: outcome.recipeID).name), \(outcome.durationMinutes) minutes."
-                     : "You left the bakery mid-bake.")
-            }
+        } message: { session in
+            Text(session.outcome == .completed
+                 ? "\(RecipeCatalog.recipe(for: session.recipeID).name), \(session.durationMinutes) minutes."
+                 : "You left the bakery mid-bake.")
         }
     }
 }

@@ -52,7 +52,7 @@ struct FocusBakeryApp: App {
         // have changed while the app was backgrounded.
         store.refreshForCurrentDay()
         // A bake may have finished — or burned — while the app was suspended.
-        store.resolveInFlightSession()
+        store.noteReturnedToForeground()
         store.markBakeryOpened()
     }
 }

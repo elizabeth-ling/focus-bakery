@@ -200,14 +200,35 @@ struct FocusSessionTests {
         store.startSession(recipeID: .chocolateChipCookie, durationMinutes: 50)
         store.noteLeftForeground()
         clock.advance(seconds: BurnPolicy.backgroundGrace - 5)
-        #expect(store.resolveInFlightSession() == nil)
+        #expect(store.noteReturnedToForeground() == nil)
         #expect(store.session.leftForegroundAt == nil)
 
         store.noteLeftForeground()
         clock.advance(seconds: BurnPolicy.backgroundGrace - 5)
 
-        #expect(store.resolveInFlightSession() == nil)
+        #expect(store.noteReturnedToForeground() == nil)
         #expect(store.session.active != nil)
+    }
+
+    @Test("A display tick after backgrounding does not spend the departure")
+    func displayTickDoesNotSpendTheDeparture() {
+        let clock = TestClock(instant(2026, 8, 14, 9))
+        let store = BakeryStore(directory: makeTemporaryDirectory(), clock: clock.wallClock)
+
+        store.startSession(recipeID: .chocolateChipCookie, durationMinutes: 50)
+        store.noteLeftForeground()
+        let departure = store.session.leftForegroundAt
+
+        // The `.task` loop keeps ticking for a moment after the app is
+        // backgrounded. Clearing the mark there would make the burn unreachable.
+        for _ in 0..<3 {
+            clock.advance(seconds: 1)
+            #expect(store.resolveInFlightSession() == nil)
+        }
+        #expect(store.session.leftForegroundAt == departure)
+
+        clock.advance(seconds: BurnPolicy.backgroundGrace)
+        #expect(store.noteReturnedToForeground()?.outcome == .burned)
     }
 
     @Test("Leaving with no bake in flight records nothing")

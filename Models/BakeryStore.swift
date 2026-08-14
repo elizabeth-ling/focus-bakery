@@ -103,11 +103,10 @@ final class BakeryStore {
 
     // MARK: - Sessions
 
-    /// The current instant from the injected clock. The countdown is a display
-    /// derived from this and the stored `endDate`, never a counter (spec 03).
-    var now: Date { clock.now() }
-
-    var resolution: SessionResolution { session.resolution(at: now) }
+    /// What the in-flight bake amounts to right now. Re-derived from the stored
+    /// `endDate` on every read, so the countdown is a display and never a
+    /// counter (spec 03).
+    var resolution: SessionResolution { session.resolution(at: clock.now()) }
 
     /// A bake that finished while the user was away and has not been shown to
     /// them yet — the celebration, or the bad news, owed on return.
@@ -145,6 +144,21 @@ final class BakeryStore {
         sessionStore.save(session)
     }
 
+    /// Resolves whatever happened while the app was away, then spends the
+    /// departure if the bake survived it.
+    ///
+    /// The grace is spent per departure and never banked towards the next one.
+    /// Clearing lives here rather than in `resolveInFlightSession` because the
+    /// display tick keeps running for a moment after the app is backgrounded,
+    /// and clearing there erases the very departure that is supposed to burn the
+    /// bake.
+    @discardableResult
+    func noteReturnedToForeground() -> BakeSession? {
+        let resolved = resolveInFlightSession()
+        if resolved == nil { clearDeparture() }
+        return resolved
+    }
+
     /// Applies the burn/complete policy to the in-flight bake. Returns the
     /// session it resolved, or nil when nothing was in flight or the bake is
     /// still going.
@@ -157,13 +171,7 @@ final class BakeryStore {
     func resolveInFlightSession() -> BakeSession? {
         let resolved: BakeSession?
         switch resolution {
-        case .idle:
-            return nil
-        case .baking:
-            // Only ever reached with the app in the foreground, so the bake has
-            // survived the absence: the grace is spent per departure and never
-            // banked towards the next one.
-            clearDeparture()
+        case .idle, .baking:
             return nil
         case .completed:
             resolved = finishActiveSession(as: .completed)
