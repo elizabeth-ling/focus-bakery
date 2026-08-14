@@ -68,6 +68,12 @@ func makeTemporaryDirectory() -> URL {
     return url
 }
 
+/// A defaults domain of its own per test, so preferences never leak between
+/// tests or into the app's own domain.
+func makeTemporaryDefaults() -> UserDefaults {
+    UserDefaults(suiteName: "FocusBakeryTests-\(UUID().uuidString)")!
+}
+
 func writeGarbage(to url: URL) {
     try? Data("{ not json at all".utf8).write(to: url)
 }
