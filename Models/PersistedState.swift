@@ -70,7 +70,7 @@ struct TodayState: Codable, Sendable {
 /// A single optional slot rather than a collection, which is what makes spec
 /// 02's "at most one `.inProgress` session" true by construction instead of by
 /// a validation rule somebody has to remember to run.
-struct SessionState: Codable, Sendable {
+struct SessionState: Codable, Equatable, Sendable {
     var active: BakeSession?
 
     /// When the app last left the foreground with this bake in flight.
