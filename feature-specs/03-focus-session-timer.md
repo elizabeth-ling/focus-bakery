@@ -49,10 +49,10 @@ v1 uses **soft commitment only**. There is no app blocker, no Family Controls, n
 entitlement.
 
 - Detect leaving via SwiftUI **`scenePhase`**.
-- Backgrounding mid-session is the burn trigger. Define the exact policy before
-  implementing — see open questions; a brief grace period is likely wanted so
-  that an accidental swipe or an incoming call doesn't destroy a 50-minute
-  session.
+- Backgrounding mid-session is the burn trigger, with a **30-second grace** (see
+  open questions, now resolved). `.inactive` is not a departure: an incoming
+  call, Control Centre, the app switcher and a Face ID sheet all land there, and
+  the user has not gone anywhere.
 - Quitting/killing the app mid-session must resolve on next launch: if the
   session was abandoned per policy, it is `.burned`; if `endDate` has passed
   within policy, it is `.completed`.
@@ -74,18 +74,46 @@ entitlement.
 
 ## Acceptance criteria
 
-- [ ] Start a session, background the app for longer than the duration, return —
-      the session resolves as completed with correct coins and treat, exactly
-      once.
-- [ ] Start a session, force-quit, relaunch — state matches the burn/complete
+- [x] Start a session, be away across `endDate` **within policy**, return — the
+      session resolves as completed with correct coins and treat, exactly once.
+      *Reworded.* The original read "background the app for longer than the
+      duration", which the resolved burn policy contradicts: a departure that
+      outlasts the bake is the definition of a burn, so as written this
+      criterion could only pass by gutting the mechanic. What it was really
+      testing is the lazy path — a bake whose `endDate` passed while the app was
+      suspended must resolve on return rather than on a live tick — and that is
+      what is now asserted, both here and from a cold launch. The literal
+      scenario is pinned too, as a burn.
+- [x] Start a session, force-quit, relaunch — state matches the burn/complete
       policy; no double-award, no lost session.
-- [ ] Start a session before midnight, return after — the session is intact and
+- [x] Start a session before midnight, return after — the session is intact and
       the display case has reset correctly.
-- [ ] Change the device timezone mid-session — remaining time is unchanged.
+- [x] Change the device timezone mid-session — remaining time is unchanged.
 - [ ] With notifications denied, a full session still completes and awards
-      correctly.
-- [ ] Coins and treats are awarded exactly once per completed session, even if
+      correctly. **Belongs to `04`** — nothing here imports `UserNotifications`,
+      and completion is resolved from persisted state by construction, so there
+      is no code path to deny yet. Re-check when `04` schedules anything.
+- [x] Coins and treats are awarded exactly once per completed session, even if
       completion is evaluated by both the live path and the foreground path.
+
+### How they were checked
+
+The wall-clock cases are unit tests over an injectable clock — the table above
+plus the criteria, driven forwards, backwards and sideways into another timezone
+without sleeping.
+
+The `scenePhase` wiring is the part no unit test reaches, so it was exercised on
+the simulator by seeding a bake straight into the store and driving the app with
+`simctl`: leave, outstay the grace, return — burned, no coins, no treat, alert
+shown; leave with less than the grace left to run and return two minutes later —
+completed, one treat, coins awarded once; leave and return inside 15 seconds —
+still baking, with the departure spent rather than banked.
+
+That pass earned its keep. It found two bugs the unit tests could not see: the
+display tick kept running for a moment after backgrounding and cleared the
+departure mark before the app suspended, making a burn unreachable; and the
+outcome alert read its value only inside a `Binding` closure, which registers no
+`@Observable` dependency, so a bake resolved at launch never reached the screen.
 
 ## Testability
 
@@ -95,11 +123,46 @@ entitlement.
 - Session resolution should be a pure function of (persisted session, current
   date) so all the table cases above are unit-testable.
 
+## How it is built
+
+- `SessionResolution` (`Models/SessionResolution.swift`) is the whole timer:
+  `(persisted session, current date) → idle | baking | completed | burned`. No
+  counter exists anywhere in the app to drift or die.
+- `SessionState.leftForegroundAt` persists the departure alongside the bake. It
+  is the only evidence a user who force-quits while away ever left, so it has to
+  survive on disk, and it is cleared with the bake it belongs to.
+- `BurnPolicy.backgroundGrace` is the single constant behind the mechanic.
+- `BakeryStore.noteLeftForeground()` and `noteReturnedToForeground()` are the two
+  `scenePhase` edges; `resolveInFlightSession()` is the shared resolution both
+  they and the display tick go through. Awarding is exactly-once because it runs
+  through `finishActiveSession`, and whichever caller arrives second finds an
+  empty slot.
+- The countdown is a display: it re-reads the store each second and renders what
+  it finds.
+- Scheduling the completion notification at start time is left to `04`, which
+  depends on this spec. Nothing here assumes a notification was delivered.
+
 ## Open questions
 
-- **Burn policy specifics:** is there a grace period for backgrounding, and how
+- ~~**Burn policy specifics:** is there a grace period for backgrounding, and how
   long? Does a phone call or a system alert count as leaving? Does locking the
-  screen count? These materially change how the mechanic feels and are not yet
-  decided.
-- Whether a session can be paused at all. Earlier planning implied no pause;
-  confirm.
+  screen count?~~ **Resolved: a 30-second grace on `.background` only.**
+  - Thirty seconds absorbs a mis-swipe or a glance at a banner without being
+    long enough to go and do something else. It is spent per departure and never
+    banked, so leaving repeatedly cannot be used to farm it.
+  - **A call or a system alert does not count.** Those leave the scene
+    `.inactive`, which is never treated as leaving — the distinction is free,
+    since iOS already draws it.
+  - **Locking the screen does count**, and this is the unsatisfying half. No
+    public API reliably tells a lock apart from a swipe home: the app is
+    backgrounded either way, and the usual signals (protected-data
+    availability, screen brightness) need a passcode set and a background task
+    to sample, then still guess wrong for some users. A rule that is strict is
+    better than one that silently fails, so a lock burns like any other
+    departure. Worth revisiting if `13` ever wants a "phone face down" mode,
+    which would be the honest way to serve this.
+- ~~Whether a session can be paused at all.~~ **Resolved: no pause**, confirming
+  the earlier planning. A pause button is an escape hatch that undercuts
+  burn-on-quit, and it would cost the property this spec is built on: remaining
+  time could no longer be `endDate - now`, because `endDate` would have to be
+  pushed forward on resume and the notification rescheduled with it.
