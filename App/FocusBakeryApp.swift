@@ -16,10 +16,17 @@ struct FocusBakeryApp: App {
                 .task { openBakery() }
         }
         .onChange(of: scenePhase) { _, phase in
-            // The day key is re-derived here, not cached at launch: the
-            // timezone may have changed while the app was backgrounded.
-            guard phase == .active else { return }
-            openBakery()
+            switch phase {
+            case .active:
+                openBakery()
+            case .background:
+                store.noteLeftForeground()
+            // `.inactive` is an incoming call, Control Centre, the app switcher
+            // or a Face ID sheet. The user is still here, so it never starts the
+            // burn grace (spec 03).
+            default:
+                break
+            }
         }
     }
 
@@ -41,7 +48,11 @@ struct FocusBakeryApp: App {
     }
 
     private func openBakery() {
+        // The day key is re-derived here, not cached at launch: the timezone may
+        // have changed while the app was backgrounded.
         store.refreshForCurrentDay()
+        // A bake may have finished — or burned — while the app was suspended.
+        store.resolveInFlightSession()
         store.markBakeryOpened()
     }
 }
