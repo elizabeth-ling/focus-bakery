@@ -23,9 +23,9 @@ from PIL import Image
 REPO = pathlib.Path(__file__).resolve().parents[2]
 MANIFEST = pathlib.Path(__file__).resolve().parent / "manifest.json"
 
-# 14 standardizes on 32x32. The pack ships 16 and 48 next to it, so a wrong
+# 14 standardizes on 16x16. The pack ships 32 and 48 next to it, so a wrong
 # path is one character away and would silently break the uniform-pixel rule.
-FORBIDDEN_RES = re.compile(r"(?:^|[/_])(16x16|48x48)(?:[/_.]|$)")
+FORBIDDEN_RES = re.compile(r"(?:^|[/_])(32x32|48x48)(?:[/_.]|$)")
 
 # Some animated objects encode their loop range in the filename. Both spellings
 # occur in the pack: "..._3-10 loop_32x32.png" and "..._4_10_loop_32x32.png".
@@ -49,7 +49,7 @@ def parse_loop_range(name: str) -> tuple[int, int] | None:
 
 def load_source(pack_root: pathlib.Path, rel: str) -> Image.Image:
     if FORBIDDEN_RES.search(rel):
-        raise BuildError(f"{rel}: 16x16/48x48 source rejected; the project is 32x32 only")
+        raise BuildError(f"{rel}: 32x32/48x48 source rejected; the project is 16x16 only")
     path = pack_root / rel
     if not path.is_file():
         raise BuildError(f"missing source: {rel}")

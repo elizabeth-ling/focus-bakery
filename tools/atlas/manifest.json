@@ -9,7 +9,7 @@
 
   "pack_root": "assets",
   "output_root": "Resources",
-  "tile": 32,
+  "tile": 16,
   "shadow_variant": "shadowless",
 
   "atlases": {
@@ -22,10 +22,10 @@
         "single flattened file is what preserves the option of customization later."
       ],
       "layers": [
-        "2_Characters/Character_Generator/0_Premade_Characters/32x32/Premade_Character_32x32_01.png",
-        "2_Characters/Character_Generator/Accessories/32x32/Accessory_18_Chef_32x32_01.png"
+        "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_01.png",
+        "2_Characters/Character_Generator/Accessories/16x16/Accessory_18_Chef_01.png"
       ],
-      "frame": [32, 64],
+      "frame": [16, 32],
       "grid": [56, 20],
       "$directions_comment": [
         "Column blocks run counter-clockwise from east: right, up, left, down.",
@@ -51,16 +51,21 @@
       ],
       "entries": {
         "oven": {
-          "path": "3_Animated_objects/32x32/spritesheets/animated_grocery_store_bakery_industrial_oven_up_32x32.png",
-          "frame": [64, 96]
+          "path": "3_Animated_objects/16x16/spritesheets/animated_grocery_store_bakery_industrial_oven_up.png",
+          "frame": [32, 48]
         },
         "oven_front": {
-          "path": "3_Animated_objects/32x32/spritesheets/animated_grocery_store_bakery_industrial_oven_down_32x32.png",
-          "frame": [64, 96]
+          "path": "3_Animated_objects/16x16/spritesheets/animated_grocery_store_bakery_industrial_oven_down.png",
+          "frame": [32, 48]
         },
         "case": {
-          "path": "3_Animated_objects/32x32/spritesheets/animated_canteen_fridge_cake_1_32x32.png",
-          "frame": [32, 96]
+          "$comment": [
+            "The 16x16 tier ships no PNG spritesheet for fridge_cake_1 -- only a",
+            "GIF, which the builder does not read. The _2 variant is the same",
+            "12 frames of the same cabinet with a different cake inside."
+          ],
+          "path": "3_Animated_objects/16x16/spritesheets/animated_canteen_fridge_cake_2.png",
+          "frame": [16, 48]
         }
       }
     },
@@ -69,19 +74,21 @@
       "kind": "singles",
       "$comment": [
         "PROVISIONAL. The final 5-6 recipes are an open question in 07; these are",
-        "the pack's most legible standalone treats at 32x32, which is the order 07",
+        "the pack's most legible standalone treats at 16x16, which is the order 07",
         "asks for (pick from what the pack renders well, not names first).",
         "Theme folder names are just the pack's sorting -- 'Christmas' cookies are",
-        "not seasonally styled."
+        "not seasonally styled. Singles are numbered identically across the pack's",
+        "resolution tiers, so these are the same sprites the 32x32 build picked.",
+        "'SIngles' in the Christmas paths is the pack's typo, not ours."
       ],
       "entries": {
-        "cookie": "1_Interiors/32x32/Theme_Sorter_Shadowless_Singles_32x32/15_Christmas_Singles_Shadowless_32x32/Christmas_Singles_Shadowless_32x32_121.png",
-        "croissant": "1_Interiors/32x32/Theme_Sorter_Shadowless_Singles_32x32/15_Christmas_Singles_Shadowless_32x32/Christmas_Singles_Shadowless_32x32_108.png",
-        "bread": "1_Interiors/32x32/Theme_Sorter_Shadowless_Singles_32x32/12_Kitchen_Singles_Shadowless_32x32/Kitchen_Singles_Shadowless_32x32_214.png",
-        "donut": "1_Interiors/32x32/Theme_Sorter_Shadowless_Singles_32x32/12_Kitchen_Singles_Shadowless_32x32/Kitchen_Singles_Shadowless_32x32_401.png",
-        "donut_chocolate": "1_Interiors/32x32/Theme_Sorter_Shadowless_Singles_32x32/12_Kitchen_Singles_Shadowless_32x32/Kitchen_Singles_Shadowless_32x32_400.png",
-        "cake": "1_Interiors/32x32/Theme_Sorter_Shadowless_Singles_32x32/10_Birthday_Party_Singles_Shadowless_32x32/Birthday_Party_Singles_Shadowless_32x32_11.png",
-        "tart": "1_Interiors/32x32/Theme_Sorter_Shadowless_Singles_32x32/16_Grocery_Store_Singles_Shadowless_32x32/Grocery_Store_Singles_Shadowless_32x32_219.png"
+        "cookie": "1_Interiors/16x16/Theme_Sorter_Shadowless_Singles/15_Christmas_Singles_Shadowless/Christmas_SIngles_Shadowless_121.png",
+        "croissant": "1_Interiors/16x16/Theme_Sorter_Shadowless_Singles/15_Christmas_Singles_Shadowless/Christmas_SIngles_Shadowless_108.png",
+        "bread": "1_Interiors/16x16/Theme_Sorter_Shadowless_Singles/12_Kitchen_Singles_Shadowless/Kitchen_Singles_Shadowless_214.png",
+        "donut": "1_Interiors/16x16/Theme_Sorter_Shadowless_Singles/12_Kitchen_Singles_Shadowless/Kitchen_Singles_Shadowless_401.png",
+        "donut_chocolate": "1_Interiors/16x16/Theme_Sorter_Shadowless_Singles/12_Kitchen_Singles_Shadowless/Kitchen_Singles_Shadowless_400.png",
+        "cake": "1_Interiors/16x16/Theme_Sorter_Shadowless_Singles/10_Birthday_Party_Singles_Shadowless/Birthday_Party_Singles_Shadowless_11.png",
+        "tart": "1_Interiors/16x16/Theme_Sorter_Shadowless_Singles/16_Grocery_Store_Singles_Shadowless/Grocery_Store_Singles_Shadowless_219.png"
       }
     }
   }

@@ -25,15 +25,16 @@ of the pack from <https://limezu.itch.io/moderninteriors>, unpacked to `assets/`
 
 ## Measured geometry
 
-Everything below was measured from the pack, not taken from the spec. Two of
+Everything below was measured from the pack at **16×16**, the tier the project
+standardizes on. Every number here halved when the project moved off 32×32. Two of
 these contradict what `feature-specs/14-art-asset-pipeline.md` originally said;
 both are now corrected there.
 
-### Character sheets are 32×64, not 32×32
+### Character sheets are 16×32, not 16×16
 
-A sheet is 1792×1312, but the frames are **32 wide × 64 tall** — a character is
+A sheet is 896×656, but the frames are **16 wide × 32 tall** — a character is
 one tile wide and two tall. That gives a **56 × 20** frame grid filling the top
-1792×1280, plus a trailing 32px empty strip. Slicing at 32×32 cuts every
+896×640, plus a trailing 16px empty strip. Slicing at 16×16 cuts every
 character in half at the waist.
 
 Row 0 is a 4-frame standing pose, one per direction. Rows 1–19 are the
@@ -56,10 +57,10 @@ constant.
 
 ### Generator layers do not all share the sheet width
 
-Most layers are 1792 wide, but the nine `Bodies` sheets and the four
-`Accessory_19_Party_Cone` sheets are **1854** — not a multiple of 32, carrying
+Most layers are 896 wide, but the nine `Bodies` sheets and the four
+`Accessory_19_Party_Cone` sheets are **927** — not a multiple of 16, carrying
 two extra frames past the 56-column grid. The premade characters are all a clean
-1792. The builder rejects a layer whose size differs from the base rather than
+896. The builder rejects a layer whose size differs from the base rather than
 compositing a misaligned grid.
 
 ### Animated objects are frame strips of the object's footprint
@@ -70,15 +71,21 @@ divides evenly.
 
 | Sheet | Size | Frames |
 |---|---|---|
-| `..._bakery_industrial_oven_up_32x32.png` | 256×96 | 4 × 64×96 |
-| `..._canteen_fridge_cake_1_32x32.png` | 384×96 | 12 × 32×96 |
+| `..._bakery_industrial_oven_up.png` | 128×48 | 4 × 32×48 |
+| `..._canteen_fridge_cake_2.png` | 192×48 | 12 × 16×48 |
 
-Some filenames encode a loop range — `..._3-10 loop_32x32.png` means frames 3–10
+Some filenames encode a loop range — `..._3-10 loop.png` means frames 3–10
 loop and the earlier ones are a one-shot intro. Both spellings occur (`3-10 loop`
 with a space and a dash, `4_10_loop` with underscores) and the builder parses
 each. **No sprite currently in the manifest uses one**; every loop-range file in
 the pack is a bathroom fixture. The support is there so the rule is not
 rediscovered later.
+
+The 16×16 tier does not ship every spritesheet the 32×32 tier does.
+`animated_canteen_fridge_cake_1` exists here only as a GIF, which the builder
+does not read, so the display case slices the `_2` variant — same cabinet, same
+12 frames, different cake. Check for a PNG before assuming a sheet has a 16×16
+twin.
 
 ## Shadow variants are not interchangeable
 
@@ -93,9 +100,12 @@ the three, and `Kitchen_..._214` is a bread loaf in two variants and carrots in
 the third. Switching to Black_Shadow means re-picking every sprite by eye.
 
 Directory naming is also inconsistent between variants, so glob carefully:
-`12_Kitchen_Singles_Shadowless_32x32` vs `12_Kitchen_Black_Shadow_Singles_32x32`
-(word order swaps), files inside the latter are prefixed `Kitchen_Shadow_Singles_`
-(not `Kitchen_Black_Shadow_Singles_`), and several folders are typo'd `SIngles`.
+`12_Kitchen_Singles_Shadowless` vs `12_Kitchen_Black_Shadow_Singles` (word order
+swaps), files inside the latter are prefixed `Kitchen_Shadow_Singles_` (not
+`Kitchen_Black_Shadow_Singles_`), and several folders are typo'd `SIngles`.
+The 16×16 tier also drops the `_16x16` suffix the 32×32 tier puts on every
+directory and filename, so a path cannot be converted between tiers by
+search-and-replace.
 
 ## Browsing the pack
 
@@ -105,7 +115,7 @@ is the only practical way to find a specific object.
 
 ```sh
 python3 tools/atlas/contact_sheet.py \
-  "assets/1_Interiors/32x32/Theme_Sorter_Shadowless_Singles_32x32/12_Kitchen_Singles_Shadowless_32x32" \
+  "assets/1_Interiors/16x16/Theme_Sorter_Shadowless_Singles/12_Kitchen_Singles_Shadowless" \
   -o /tmp/kitchen.png --cols 16 --start 0 --limit 200
 ```
 
