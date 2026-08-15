@@ -7,3 +7,15 @@ my attempt at building an app with a soul; built because I got fed up with Fores
 ![cookie](images/cookie.png)
 ![baker](images/baker.png)
 ![oven](images/oven.png)
+
+## how to run
+
+
+test: 
+`xcodebuild test -scheme FocusBakery -destination 'platform=iOS Simulator, name=iPhone 16'`
+
+see variables/placeholders:
+`xcodebuild build`
+
+see main screen: 
+`xcodebuild build -scheme FocusBakery \ -destination 'platform='
