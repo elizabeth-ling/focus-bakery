@@ -19,10 +19,21 @@
         "Layer order is the pack's documented BODY > EYES > OUTFIT > HAIRSTYLE >",
         "ACCESSORY (CHARACTER_GENERATOR.txt). A premade collapses the first four,",
         "so only the accessory is layered on top. Keeping this a list rather than a",
-        "single flattened file is what preserves the option of customization later."
+        "single flattened file is what preserves the option of customization later.",
+        "",
+        "The base layer is now a custom composite (assets/2_Characters/sprite_female.png,",
+        "built by assets/2_Characters/generator.html from raw Body+Outfit+Hairstyle",
+        "layers) rather than a pack Premade. That sheet ships at the pack's 32x32",
+        "tier (Bodies-family width 927x2=1854), so sprite_female_16x16.png is a",
+        "checked-in-by-hand nearest-neighbour 2x downscale of it, cropped from 927",
+        "to 896 wide to match the Accessory layer's canvas (only unused trailing",
+        "padding is lost -- every animation column the manifest below uses is",
+        "within 0..896). This one layer is the exception to 'nothing here hardcodes",
+        "a sprite': regenerating it means re-running that downscale+crop, not just",
+        "re-running build_atlases.py."
       ],
       "layers": [
-        "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_01.png",
+        "2_Characters/sprite_female_16x16.png",
         "2_Characters/Character_Generator/Accessories/16x16/Accessory_18_Chef_01.png"
       ],
       "frame": [16, 32],
