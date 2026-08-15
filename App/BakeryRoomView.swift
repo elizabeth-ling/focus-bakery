@@ -31,6 +31,12 @@ struct BakeryRoomView: View {
     @State private var watchedBakeWhileActive = false
     @State private var isConfirmingCancel = false
     @State private var isShowingOutcome = false
+    /// Openable at launch so the modal can be screenshotted without tap
+    /// tooling, the same way `-pixelProof` serves spec 01.
+    @State private var isShowingRecipeBook =
+        ProcessInfo.processInfo.arguments.contains("-recipeBook")
+
+    private let settings = Settings()
 
     var body: some View {
         // Read in the body pass, not only inside closures, so the @Observable
@@ -43,8 +49,18 @@ struct BakeryRoomView: View {
             // app is backgrounded, which is all spec 05's lifecycle rule asks.
             SpriteView(scene: scene)
                 .ignoresSafeArea()
-            controls
+            if !isShowingRecipeBook {
+                controls
+            }
+            if isShowingRecipeBook {
+                recipeBook
+                    .zIndex(1)
+                    .transition(reduceMotion
+                                ? .opacity
+                                : .opacity.combined(with: .scale(scale: 1.04)))
+            }
         }
+        .animation(.easeOut(duration: 0.15), value: isShowingRecipeBook)
         .task {
             scene.onEvent = { handle($0) }
             // The display tick: re-reads the store each second and re-derives
@@ -95,20 +111,41 @@ struct BakeryRoomView: View {
         }
     }
 
-    /// Scaffold controls until spec 06 brings the "+" button and spec 10 the
-    /// recipe book. SwiftUI chrome, physically apart from the bitmap text (01).
+    /// Scaffold controls until spec 06 brings the real "+" chrome. SwiftUI,
+    /// physically apart from the bitmap text (01). The "+" only exists while
+    /// nothing is baking, which is how the modal cannot be opened mid-session
+    /// (specs 06, 10).
     private var controls: some View {
         HStack(spacing: 12) {
             switch store.resolution {
             case .baking:
                 Button("Cancel bake", role: .destructive) { isConfirmingCancel = true }
             default:
-                Button("Bake 1 min") { start(minutes: 1) }
-                Button("Bake 25 min") { start(minutes: 25) }
+                Button("+") { isShowingRecipeBook = true }
+                    .font(ChromeFont.pixel(3))
+                    .accessibilityLabel("Start a bake")
             }
         }
         .buttonStyle(.borderedProminent)
         .padding(.bottom, 20)
+    }
+
+    /// Spec 10's modal, fed and drained here so the boundary stays the same as
+    /// the scene's: the book reads the store through this view and hands back
+    /// one event.
+    private var recipeBook: some View {
+        let lastUsed = settings.lastBakeRecipeID
+        return RecipeBookModalView(
+            unlockedRecipes: store.unlockedRecipes,
+            initialRecipeID: lastUsed.flatMap { store.isUnlocked($0) ? $0 : nil }
+                ?? RecipeCatalog.starter,
+            initialMinutes: settings.lastBakeDurationMinutes,
+            onStart: { recipeID, minutes in
+                isShowingRecipeBook = false
+                start(recipeID: recipeID, minutes: minutes)
+            },
+            onDismiss: { isShowingRecipeBook = false }
+        )
     }
 
     /// App state → scene model, the one place the translation happens.
@@ -157,13 +194,17 @@ struct BakeryRoomView: View {
 
     /// Permission is asked in context, at the moment its value is obvious
     /// (specs 04, 11). The bake starts either way.
-    private func start(minutes: Int) {
+    private func start(recipeID: RecipeID, minutes: Int) {
+        // Remembered at start, not at completion: what the book should open
+        // showing next time is what the user last chose (spec 10).
+        settings.lastBakeRecipeID = recipeID
+        settings.lastBakeDurationMinutes = minutes
         Task {
             // A payoff still pending when a new bake starts was superseded, not
             // lost — the treat is in the case either way.
             store.acknowledgeOutcome()
             await notifications.requestAuthorizationForBake()
-            store.startSession(recipeID: RecipeCatalog.starter, durationMinutes: minutes)
+            store.startSession(recipeID: recipeID, durationMinutes: minutes)
         }
     }
 }

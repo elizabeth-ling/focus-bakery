@@ -8,6 +8,9 @@ enum PixelAtlas: String, CaseIterable {
     case bakery = "Bakery"
     case treats = "Treats"
     case font = "Font"
+    /// Authored chrome (tools/ui), not pack art — the one atlas that is
+    /// committed alongside the font.
+    case ui = "UI"
 }
 
 /// The single texture load path.
