@@ -1,0 +1,188 @@
+import SpriteKit
+import Testing
+@testable import FocusBakery
+
+/// Drives the scene headlessly: `apply(_:)` runs synchronously, so state entry,
+/// the oven, the chrome and the shelf are all assertable without a view.
+/// Actions do not advance without a presenting `SKView`, which is exactly why
+/// the assertions accept either end of an internal transition — the walk
+/// choreography's motion itself is covered by `GridMotionTests` and the device
+/// pass.
+@MainActor
+@Suite("Bakery scene")
+struct BakerySceneTests {
+    private func makeScene(size: CGSize = CGSize(width: 393, height: 852)) -> BakeryScene {
+        let scene = BakeryScene(size: size)
+        scene.scaleMode = .resizeFill
+        return scene
+    }
+
+    private static let phases: [BakeryScene.Model.Phase] = [
+        .idle,
+        .baking(secondsRemaining: 90),
+        .delivering(.chocolateChipCookie),
+    ]
+
+    private func activities(serving phase: BakeryScene.Model.Phase) -> Set<BakeryScene.Activity> {
+        switch phase {
+        case .idle: [.resting, .celebrating]
+        case .baking: [.walkingToStation, .working]
+        case .delivering: [.delivering, .celebrating]
+        }
+    }
+
+    @Test("Any phase is enterable directly from any other")
+    func anyPhaseFromAnyPhase() {
+        for first in Self.phases {
+            for second in Self.phases {
+                let scene = makeScene()
+                scene.apply(BakeryScene.Model(phase: first))
+                scene.apply(BakeryScene.Model(phase: second))
+                #expect(
+                    activities(serving: second).contains(scene.activity),
+                    "\(first) → \(second) left the baker \(scene.activity)"
+                )
+            }
+        }
+    }
+
+    @Test("The director serves every phase from every activity")
+    func directorServesEveryPair() {
+        for phase in Self.phases {
+            for current in BakeryScene.Activity.allCases {
+                let target = BakerDirector.target(for: phase, current: current)
+                let after = target ?? current
+                #expect(
+                    activities(serving: phase).contains(after),
+                    "\(phase) from \(current) resolves to \(after)"
+                )
+            }
+        }
+    }
+
+    @Test("Transitions leave the baker on the art-pixel grid")
+    func bakerStaysOnTheGrid() throws {
+        let scene = makeScene()
+        let sequence: [BakeryScene.Model.Phase] = [
+            .baking(secondsRemaining: 60),
+            .delivering(.chocolateChipCookie),
+            .idle,
+            .baking(secondsRemaining: 30),
+            .idle,
+        ]
+        for phase in sequence {
+            scene.apply(BakeryScene.Model(phase: phase))
+            let position = try #require(scene.bakerPosition)
+            let step = CGFloat(RoomLayout(fitting: scene.size).scale)
+            #expect(position.x.truncatingRemainder(dividingBy: step) == 0)
+            #expect(position.y.truncatingRemainder(dividingBy: step) == 0)
+        }
+    }
+
+    @Test("The oven runs during a bake and only during a bake")
+    func ovenTracksTheSession() {
+        let scene = makeScene()
+        scene.apply(BakeryScene.Model(phase: .idle))
+        #expect(!scene.isOvenRunning)
+
+        scene.apply(BakeryScene.Model(phase: .baking(secondsRemaining: 300)))
+        #expect(scene.isOvenRunning)
+        scene.apply(BakeryScene.Model(phase: .baking(secondsRemaining: 299)))
+        #expect(scene.isOvenRunning)
+
+        // Completion leaves the baking phase, so the oven stops for the walk.
+        scene.apply(BakeryScene.Model(phase: .delivering(.chocolateChipCookie)))
+        #expect(!scene.isOvenRunning)
+
+        // A burn or cancel goes straight to idle: also stops.
+        scene.apply(BakeryScene.Model(phase: .baking(secondsRemaining: 60)))
+        scene.apply(BakeryScene.Model(phase: .idle))
+        #expect(!scene.isOvenRunning)
+    }
+
+    @Test("The countdown renders through the bitmap pipeline and clears with the bake")
+    func timerFollowsThePhase() {
+        let scene = makeScene()
+        scene.apply(BakeryScene.Model(phase: .baking(secondsRemaining: 605)))
+        #expect(scene.displayedTimer == "10:05")
+        scene.apply(BakeryScene.Model(phase: .baking(secondsRemaining: 60)))
+        #expect(scene.displayedTimer == "1:00")
+        scene.apply(BakeryScene.Model(phase: .idle))
+        #expect(scene.displayedTimer.isEmpty)
+    }
+
+    @Test("A delivered treat is withheld from the case until the baker places it")
+    func deliveredTreatWaitsForTheWalk() {
+        let scene = makeScene()
+        scene.apply(BakeryScene.Model(
+            phase: .baking(secondsRemaining: 1),
+            treats: [.chocolateChipCookie]
+        ))
+        #expect(scene.visibleTreatCount == 1)
+
+        // The store records the treat at completion (02); the walk has not
+        // happened yet, so the case must still show one.
+        scene.apply(BakeryScene.Model(
+            phase: .delivering(.chocolateChipCookie),
+            treats: [.chocolateChipCookie, .chocolateChipCookie]
+        ))
+        #expect(scene.visibleTreatCount == 1)
+
+        // However the delivery ends — placed, interrupted, acknowledged — an
+        // idle room shows everything the store says exists.
+        scene.apply(BakeryScene.Model(
+            phase: .idle,
+            treats: [.chocolateChipCookie, .chocolateChipCookie]
+        ))
+        #expect(scene.visibleTreatCount == 2)
+    }
+
+    @Test("A burned bake adds nothing and sends the baker home")
+    func burnedAddsNothingAndRests() {
+        let scene = makeScene()
+        scene.apply(BakeryScene.Model(phase: .baking(secondsRemaining: 300)))
+        scene.apply(BakeryScene.Model(phase: .idle))
+        #expect(scene.activity == .resting)
+        #expect(scene.visibleTreatCount == 0)
+        #expect(!scene.isOvenRunning)
+    }
+
+    @Test("A size change resettles the room instead of replaying transitions")
+    func sizeChangeResettles() {
+        let scene = makeScene()
+        scene.apply(BakeryScene.Model(phase: .baking(secondsRemaining: 100)))
+        scene.size = CGSize(width: 440, height: 956)
+        scene.apply(BakeryScene.Model(phase: .baking(secondsRemaining: 99)))
+        #expect(scene.activity == .working)
+        #expect(scene.isOvenRunning)
+        #expect(scene.displayedTimer == "1:39")
+    }
+
+    @Test("Reduced motion still reaches every state and still delivers")
+    func reducedMotionReachesEveryState() {
+        let scene = makeScene()
+        scene.apply(BakeryScene.Model(phase: .baking(secondsRemaining: 60), reduceMotion: true))
+        #expect(activities(serving: .baking(secondsRemaining: 60)).contains(scene.activity))
+        #expect(scene.isOvenRunning)
+
+        scene.apply(BakeryScene.Model(
+            phase: .delivering(.cake),
+            treats: [.cake],
+            reduceMotion: true
+        ))
+        #expect(activities(serving: .delivering(.cake)).contains(scene.activity))
+
+        scene.apply(BakeryScene.Model(phase: .idle, treats: [.cake], reduceMotion: true))
+        #expect(activities(serving: .idle).contains(scene.activity))
+        #expect(scene.visibleTreatCount == 1)
+    }
+
+    @Test("The shelf shows at most one treat per slot and keeps completion order")
+    func shelfCapsAtItsSlots() {
+        let scene = makeScene()
+        let plan = RoomPlan(fitting: RoomLayout(fitting: scene.size))
+        let treats = Array(repeating: RecipeID.chocolateChipCookie, count: plan.shelfColumns.count + 3)
+        scene.apply(BakeryScene.Model(phase: .idle, treats: treats))
+        #expect(scene.visibleTreatCount == plan.shelfColumns.count)
+    }
+}

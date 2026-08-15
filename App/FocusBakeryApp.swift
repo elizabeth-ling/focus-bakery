@@ -45,11 +45,15 @@ struct FocusBakeryApp: App {
     ///
     ///     xcrun simctl launch <device> com.focusbakery.FocusBakery -pixelProof
     ///
-    /// Temporary, with `PixelProofView` and `PersistencePlaceholderView` both.
+    /// `-bakeryRoom` selects spec 05's room against the real store the same
+    /// way. Temporary, all three scaffolds: spec 06 makes the room the real
+    /// root and retires the flags.
     @ViewBuilder
     private var root: some View {
         if ProcessInfo.processInfo.arguments.contains("-pixelProof") {
             PixelProofView()
+        } else if ProcessInfo.processInfo.arguments.contains("-bakeryRoom") {
+            BakeryRoomView()
         } else {
             PersistencePlaceholderView()
         }
