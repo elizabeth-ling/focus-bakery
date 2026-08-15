@@ -20,7 +20,8 @@ struct BakeryStoreTests {
 
         let after = BakeryStore(directory: directory, clock: clock.wallClock)
 
-        #expect(after.progress.wallet.coinBalance == 30)
+        #expect(after.progress.wallet.coinBalance
+                == Economy.coins(forCompletedMinutes: 90) - Economy.price(for: .croissant))
         #expect(after.isUnlocked(.croissant))
         #expect(after.today.displayCase.treats == [.chocolateChipCookie])
         #expect(after.today.focusMinutes == 90)
@@ -50,7 +51,8 @@ struct BakeryStoreTests {
         #expect(store.today.displayCase.isEmpty)
         #expect(store.today.focusMinutes == 0)
         #expect(store.isUnlocked(.croissant))
-        #expect(store.progress.wallet.coinBalance == 30)
+        #expect(store.progress.wallet.coinBalance
+                == Economy.coins(forCompletedMinutes: 90) - Economy.price(for: .croissant))
     }
 
     @Test("A reset never clobbers an in-flight bake")
@@ -128,7 +130,7 @@ struct BakeryStoreTests {
         #expect(store.finishActiveSession(as: .completed) != nil)
         #expect(store.finishActiveSession(as: .completed) == nil)
 
-        #expect(store.progress.wallet.coinBalance == 30)
+        #expect(store.progress.wallet.coinBalance == Economy.coins(forCompletedMinutes: 30))
         #expect(store.today.displayCase.totalCount == 1)
     }
 

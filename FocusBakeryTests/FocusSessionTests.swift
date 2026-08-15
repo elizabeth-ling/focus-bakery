@@ -24,14 +24,14 @@ struct FocusSessionTests {
 
         #expect(resolved?.outcome == .completed)
         #expect(store.pendingOutcome?.id == resolved?.id)
-        #expect(store.progress.wallet.coinBalance == 25)
+        #expect(store.progress.wallet.coinBalance == Economy.coins(forCompletedMinutes: 25))
         #expect(store.today.displayCase.treats == [.chocolateChipCookie])
         #expect(store.today.focusMinutes == 25)
 
         // The foreground pass runs on every return, and the display tick runs
         // every second: neither may award a second time.
         #expect(store.resolveInFlightSession() == nil)
-        #expect(store.progress.wallet.coinBalance == 25)
+        #expect(store.progress.wallet.coinBalance == Economy.coins(forCompletedMinutes: 25))
         #expect(store.today.displayCase.totalCount == 1)
     }
 
@@ -49,7 +49,7 @@ struct FocusSessionTests {
 
         #expect(store.resolveInFlightSession()?.outcome == .completed)
         #expect(store.resolveInFlightSession() == nil)
-        #expect(store.progress.wallet.coinBalance == 25)
+        #expect(store.progress.wallet.coinBalance == Economy.coins(forCompletedMinutes: 25))
         #expect(store.today.displayCase.totalCount == 1)
     }
 
@@ -109,11 +109,11 @@ struct FocusSessionTests {
         let after = BakeryStore(directory: directory, clock: clock.wallClock)
 
         #expect(after.resolveInFlightSession()?.outcome == .completed)
-        #expect(after.progress.wallet.coinBalance == 25)
+        #expect(after.progress.wallet.coinBalance == Economy.coins(forCompletedMinutes: 25))
 
         let third = BakeryStore(directory: directory, clock: clock.wallClock)
         #expect(third.resolveInFlightSession() == nil)
-        #expect(third.progress.wallet.coinBalance == 25)
+        #expect(third.progress.wallet.coinBalance == Economy.coins(forCompletedMinutes: 25))
         #expect(third.today.displayCase.totalCount == 1)
     }
 

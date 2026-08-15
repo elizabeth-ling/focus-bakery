@@ -20,7 +20,8 @@ struct FailSoftPersistenceTests {
 
         let after = BakeryStore(directory: directory, clock: clock.wallClock)
         #expect(after.isUnlocked(.croissant))
-        #expect(after.progress.wallet.coinBalance == 30)
+        #expect(after.progress.wallet.coinBalance
+                == Economy.coins(forCompletedMinutes: 90) - Economy.price(for: .croissant))
         #expect(after.today.displayCase.isEmpty)
         #expect(after.today.date == DayKey(year: 2026, month: 8, day: 14))
     }

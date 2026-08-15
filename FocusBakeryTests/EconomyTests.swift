@@ -21,11 +21,41 @@ struct EconomyTests {
         #expect(Set(spriteNames).count == spriteNames.count)
     }
 
-    @Test("Coins scale with completed minutes and never go negative")
+    /// The one place the curve's numbers are legitimately written down twice:
+    /// this suite exists to pin `Economy`, so it names what the bands pay.
+    /// Everywhere else asks `Economy.coins(forCompletedMinutes:)`.
+    @Test("Coins follow the banded curve and never go negative")
     func coinsForMinutes() {
         #expect(Economy.coins(forCompletedMinutes: 0) == 0)
-        #expect(Economy.coins(forCompletedMinutes: 25) == 25 * Economy.coinsPerFocusMinute)
         #expect(Economy.coins(forCompletedMinutes: -10) == 0)
+
+        #expect(Economy.coins(forCompletedMinutes: 5) == 5)
+        #expect(Economy.coins(forCompletedMinutes: 15) == 15)
+        // 15 at one, then ten at two.
+        #expect(Economy.coins(forCompletedMinutes: 25) == 35)
+        // 15 at one, thirty at two.
+        #expect(Economy.coins(forCompletedMinutes: 45) == 75)
+        // ...then the rest at three.
+        #expect(Economy.coins(forCompletedMinutes: 50) == 90)
+    }
+
+    @Test("The curve rises without a cliff, so no duration is worth stopping short of")
+    func curveIsMonotonicAndContinuous() {
+        let byMinute = (0...120).map(Economy.coins(forCompletedMinutes:))
+        let steps = zip(byMinute, byMinute.dropFirst()).map { $1 - $0 }
+
+        #expect(steps.allSatisfy { $0 > 0 })
+        // A band change may raise the per-minute rate but must never hand out a
+        // lump sum -- that is the cliff a banded *total* would create.
+        #expect(steps.allSatisfy { $0 <= 3 })
+    }
+
+    @Test("One deep session out-earns the same minutes chopped into short ones")
+    func depthBeatsFarming() {
+        let oneLongBake = Economy.coins(forCompletedMinutes: 50)
+        let tenShortBakes = 10 * Economy.coins(forCompletedMinutes: 5)
+
+        #expect(oneLongBake > tenShortBakes)
     }
 
     @Test("A wallet refuses to overspend")
