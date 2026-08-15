@@ -138,24 +138,84 @@ without art in the way.
 
 ## Acceptance criteria
 
-- [ ] The scene reflects session state within one frame of the state changing,
-      driven only by input from the app layer.
-- [ ] No timer arithmetic, persistence call, or notification scheduling exists
-      inside the `SKScene`.
-- [ ] Every state in the table is reachable, and any state can be entered
-      directly from any other without stranding the baker mid-walk.
-- [ ] The oven animates for exactly the duration of a session, and stops on
-      completion, burn, and cancel.
-- [ ] Completing a session plays the deliver walk and the treat lands in the case
-      at the end of it.
-- [ ] A burned session plays neither deliver nor celebrate, and adds nothing.
+- [x] The scene reflects session state within one frame of the state changing,
+      driven only by input from the app layer. `apply(_:)` is synchronous and
+      the host calls it on every session edge, not only on the display tick.
+- [x] No timer arithmetic, persistence call, or notification scheduling exists
+      inside the `SKScene`. Verifiable by inspection: `BakeryScene` receives a
+      seconds count and formats it; it imports nothing but SpriteKit.
+- [x] Every state in the table is reachable, and any state can be entered
+      directly from any other without stranding the baker mid-walk. Asserted
+      headlessly for every ordered pair of phases, and by the route tests,
+      which include a walk cut off in the counter corridor.
+- [x] The oven animates for exactly the duration of a session, and stops on
+      completion, burn, and cancel — it runs iff the phase is `.baking`, and
+      completion, burn and cancel all leave that phase. Unit-tested, and
+      confirmed on the simulator by frame-diffing screenshots. (Diff against
+      the *right* frames: the strip ping-pongs, `oven_01` == `oven_03`, so two
+      samples half a loop apart can compare equal while animating.)
+- [x] Completing a session plays the deliver walk and the treat lands in the case
+      at the end of it. The store records the treat at completion (02); the
+      scene withholds the last one until the place step, which is asserted, and
+      the walk itself was watched on the simulator with a seeded bake.
+- [x] A burned session plays neither deliver nor celebrate, and adds nothing.
+      Burn and cancel reach the scene as `.idle` — only a completion the user
+      watched becomes `.delivering`, so there is no path from a burn to the
+      payoff choreography.
 - [ ] The baker sorts correctly against fixtures from every approach direction.
-- [ ] Timer digits render as bitmap text, crisp, matching the art's pixel size.
+      Sorting is one rule — `zPosition` from base y, baker re-sorted each
+      frame — and the front-of-counter and front-of-oven cases were verified by
+      screenshot, but a full walk around every fixture still owes a device pass.
+- [x] Timer digits render as bitmap text, crisp, through the spec-01 pipeline.
+      The digits are magnified ×2 over the room scale (as `01`'s proof surface
+      was) — an integer multiple, so pixels stay uniform within the text; `06`
+      owns whether the final chrome keeps that size.
 - [ ] The room lays out correctly on the smallest and largest supported devices
-      with no fractional scaling.
+      with no fractional scaling. The plan's anchors and routes are asserted
+      for every supported size, but only the iPhone 16 room has been looked at;
+      the SE and Pro Max screenshots are owed with `06`'s real shell.
 - [ ] Reduced-motion is honored (`13`) without breaking state transitions —
-      including the deliver walk, which must have a calmer path that still
-      delivers the treat.
+      including the deliver walk, which repositions instead of walking and
+      still delivers the treat. The state machine under reduce-motion is
+      unit-tested; how the calm path *feels* is owed to `13`'s device pass.
+
+## How it is built
+
+- `RoomPlan` (`Rendering/RoomPlan.swift`) is the layout half: every fixture and
+  walk anchor derived from the room's tile dimensions — oven hung on the back
+  wall, counter line at half height with a corridor gap, door and rest in front
+  of house. Routes are authored and axis-aligned, computable from *any* tile,
+  because an interrupted walk resumes from wherever it was cut. The route tests
+  caught the café seating sitting in a walk lane, which is why the seats stand
+  against the left wall — the one strip no route crosses.
+- `BakeryScene` (`App/BakeryScene.swift`) renders one `Model` value and emits
+  events. `BakerDirector` is the state machine made explicit: app phase →
+  target activity as a pure function, with `nil` meaning "already serving it".
+  Every activity enters through a single `enter(_:)` that first removes all
+  actions and snaps the baker to the grid — cancellation is the default, and a
+  removed action never fires its completion, so superseded choreography cannot
+  come back to life. The scene phases are `.idle`, `.baking(seconds)` and
+  `.delivering(recipe)`: burn and cancel are just `.idle`, and only the host
+  view decides a completion earned `.delivering` — one that resolved while the
+  app was away arrives as `.idle` with the treat already in `treats`, which is
+  how the walk is never replayed out of context.
+- Rebuilds (size change, first presentation) *settle* into the state the model
+  implies instead of replaying transitions. SpriteView hands the scene
+  transient sizes (a 1×1 probe among them) while SwiftUI lays out, so the
+  scene also re-checks its layout on each rendered frame and rebuilds if the
+  size moved under it.
+- `BakeryRoomView` (`App/BakeryRoomView.swift`, launched with `-bakeryRoom`)
+  is the app-layer half of the boundary until `06`: it derives the model from
+  the store each second and on each session edge, and translates scene events
+  back into `acknowledgeOutcome` and notification cleanup. SpriteView's
+  `isPaused:` parameter kept the scene from ever being presented, so
+  backgrounding relies on SKView's automatic pause instead.
+- Placeholder-first, still partly placeholder: baker, oven, display case and
+  treats are pack art (the atlases already existed); floor, walls, prep
+  counter and seating are colored blocks, and every pack sprite has a block
+  fallback so a checkout without `assets/` still shows the full choreography.
+  Choosing the real floor/wall/fixture sprites is the `14` layout task `06`
+  picks up.
 
 ## Gotchas
 
@@ -171,10 +231,17 @@ without art in the way.
 
 ## Open questions
 
-- Room tile dimensions per device class (shared with `01`).
-- Exact anchor positions and walk routes.
-- Whether the idle baker drifts between anchors or holds one resting spot.
-- Whether a burned session gets any visual acknowledgment beyond returning to
-  idle, or stays deliberately quiet.
+- ~~Room tile dimensions per device class (shared with `01`).~~ **Resolved by
+  `01`'s `RoomLayout`**; the plan flexes over whatever it resolves.
+- ~~Exact anchor positions and walk routes.~~ **Resolved: `RoomPlan`**, derived
+  from anchors per device, with authored corridor-crossing routes.
+- ~~Whether the idle baker drifts between anchors or holds one resting spot.~~
+  **Resolved for v1: one resting spot.** Drifting is an ambient nicety, and the
+  spec's own priority order says cut ambient before choreography — revisit only
+  once the real art is in and the room feels static.
+- ~~Whether a burned session gets any visual acknowledgment beyond returning to
+  idle, or stays deliberately quiet.~~ **Resolved: quiet in-scene.** The baker
+  walks home and the oven stops; the app layer breaks the bad news in chrome.
+  Nothing in the room celebrates or scolds.
 - Whether the ambient bakery hum (`12`) is driven from the scene or the app
   layer — prefer the app layer, since audio outlives individual scene instances.
