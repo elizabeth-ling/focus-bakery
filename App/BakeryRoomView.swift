@@ -39,7 +39,9 @@ struct BakeryRoomView: View {
         let deliverOwed = watchedBakeWhileActive && outcome?.outcome == .completed
 
         ZStack(alignment: .bottom) {
-            SpriteView(scene: scene, isPaused: scenePhase != .active)
+            // No explicit isPaused: SKView already stops rendering while the
+            // app is backgrounded, which is all spec 05's lifecycle rule asks.
+            SpriteView(scene: scene)
                 .ignoresSafeArea()
             controls
         }
