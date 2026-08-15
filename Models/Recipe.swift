@@ -49,3 +49,33 @@ enum RecipeCatalog {
 
     static let all: [Recipe] = RecipeID.allCases.map(recipe(for:))
 }
+
+/// One row of the recipe book.
+///
+/// The book is the whole catalogue rather than the unlocked slice: spec 07
+/// wants locked recipes visible with their price, because a goal you cannot see
+/// is not a goal. `coinsShort` is carried rather than left to the caller so the
+/// shortfall can be *said* — spec 07 asks that an unaffordable recipe be
+/// explained, not just rendered as a dead control.
+struct RecipeBookEntry: Identifiable, Hashable, Sendable {
+    let recipe: Recipe
+    let isUnlocked: Bool
+    /// Coins still needed to afford this recipe. Zero when it is already owned
+    /// or the balance covers it.
+    let coinsShort: Int
+
+    var id: RecipeID { recipe.id }
+    var isAffordable: Bool { coinsShort == 0 }
+}
+
+/// Why a purchase did or did not happen.
+///
+/// Three cases rather than a `Bool` for the same reason: "no" and "no, and here
+/// is how much you are short" are different things to a user, and only one of
+/// them can be explained.
+enum PurchaseResult: Equatable, Sendable {
+    case bought
+    case alreadyOwned
+    /// The wallet and the book are both untouched.
+    case insufficientFunds(coinsShort: Int)
+}

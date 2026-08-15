@@ -91,14 +91,35 @@ final class BakeryStore {
         RecipeCatalog.all.filter { isUnlocked($0.id) }
     }
 
-    /// Spends the price and unlocks permanently. Reports failure and leaves both
-    /// the wallet and the book untouched when the balance is short (spec 07).
+    /// The whole catalogue, locked entries included, each priced against the
+    /// current balance. This is what spec 10's modal reads.
+    var recipeBook: [RecipeBookEntry] {
+        RecipeCatalog.all.map { recipe in
+            RecipeBookEntry(
+                recipe: recipe,
+                isUnlocked: isUnlocked(recipe.id),
+                coinsShort: max(0, recipe.price - progress.wallet.coinBalance)
+            )
+        }
+    }
+
+    /// Spends the price and unlocks permanently.
+    ///
+    /// The wallet and the book move together or not at all: `Wallet.spend`
+    /// refuses to go negative, and the unlock is only recorded once the spend
+    /// has actually succeeded, so a short balance cannot half-apply a purchase.
     @discardableResult
-    func unlock(_ id: RecipeID) -> Bool {
-        guard !isUnlocked(id), progress.wallet.spend(Economy.price(for: id)) else { return false }
+    func purchase(_ id: RecipeID) -> PurchaseResult {
+        guard !isUnlocked(id) else { return .alreadyOwned }
+
+        let price = Economy.price(for: id)
+        guard progress.wallet.spend(price) else {
+            return .insufficientFunds(coinsShort: price - progress.wallet.coinBalance)
+        }
+
         progress.unlockedRecipeIDs.insert(id)
         progressStore.save(progress)
-        return true
+        return .bought
     }
 
     // MARK: - Sessions

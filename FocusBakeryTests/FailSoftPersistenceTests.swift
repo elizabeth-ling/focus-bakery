@@ -14,7 +14,7 @@ struct FailSoftPersistenceTests {
         before.startSession(recipeID: .chocolateChipCookie, durationMinutes: 90)
         clock.advance(hours: 1.5)
         before.finishActiveSession(as: .completed)
-        #expect(before.unlock(.croissant))
+        #expect(before.purchase(.croissant) == .bought)
 
         writeGarbage(to: directory.appending(path: "today.json"))
 

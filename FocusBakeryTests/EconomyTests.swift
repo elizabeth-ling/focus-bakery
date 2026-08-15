@@ -50,62 +50,149 @@ struct EconomyTests {
 @MainActor
 @Suite("Unlocking recipes")
 struct UnlockTests {
-    @Test("Buying a recipe deducts the price and unlocks it")
-    func buyingDeductsAndUnlocks() {
+    /// Earns by baking rather than by poking the wallet, so the tests spend the
+    /// same coins the product does.
+    private func storeEarning(
+        fromMinutes minutes: Int,
+        clock: TestClock,
+        directory: URL = makeTemporaryDirectory()
+    ) -> BakeryStore {
+        let store = BakeryStore(directory: directory, clock: clock.wallClock)
+        guard minutes > 0 else { return store }
+
+        store.startSession(recipeID: .chocolateChipCookie, durationMinutes: minutes)
+        clock.advance(minutes: Double(minutes))
+        store.finishActiveSession(as: .completed)
+        return store
+    }
+
+    @Test("A fresh install has exactly one unlocked recipe: the chocolate-chip cookie")
+    func freshInstallHasOnlyTheStarter() {
         let clock = TestClock(instant(2026, 8, 14, 9))
         let store = BakeryStore(directory: makeTemporaryDirectory(), clock: clock.wallClock)
 
-        store.startSession(recipeID: .chocolateChipCookie, durationMinutes: 90)
-        clock.advance(hours: 1.5)
-        store.finishActiveSession(as: .completed)
+        #expect(store.unlockedRecipes.map(\.id) == [.chocolateChipCookie])
+        #expect(store.progress.wallet.coinBalance == 0)
+    }
 
-        #expect(store.unlock(.croissant))
-        #expect(store.progress.wallet.coinBalance == 90 - Economy.price(for: .croissant))
+    @Test("Buying a recipe deducts the price and unlocks it")
+    func buyingDeductsAndUnlocks() {
+        let clock = TestClock(instant(2026, 8, 14, 9))
+        let store = storeEarning(fromMinutes: 90, clock: clock)
+        let earned = Economy.coins(forCompletedMinutes: 90)
+
+        #expect(store.purchase(.croissant) == .bought)
+        #expect(store.progress.wallet.coinBalance == earned - Economy.price(for: .croissant))
         #expect(store.isUnlocked(.croissant))
         #expect(store.unlockedRecipes.map(\.id) == [.chocolateChipCookie, .croissant])
     }
 
-    @Test("An unaffordable recipe leaves the wallet and the book untouched")
+    @Test("An unaffordable recipe reports the shortfall and touches nothing")
     func unaffordableUnlockIsRefused() {
         let clock = TestClock(instant(2026, 8, 14, 9))
-        let store = BakeryStore(directory: makeTemporaryDirectory(), clock: clock.wallClock)
+        let store = storeEarning(fromMinutes: 25, clock: clock)
+        let balance = store.progress.wallet.coinBalance
 
-        #expect(store.unlock(.cake) == false)
-        #expect(store.progress.wallet.coinBalance == 0)
+        let result = store.purchase(.cake)
+
+        #expect(result == .insufficientFunds(coinsShort: Economy.price(for: .cake) - balance))
+        #expect(store.progress.wallet.coinBalance == balance)
         #expect(store.isUnlocked(.cake) == false)
     }
 
     @Test("Buying the same recipe twice is refused and does not double-charge")
     func doubleUnlockIsRefused() {
         let clock = TestClock(instant(2026, 8, 14, 9))
+        let store = storeEarning(fromMinutes: 200, clock: clock)
+
+        #expect(store.purchase(.croissant) == .bought)
+        let afterFirst = store.progress.wallet.coinBalance
+
+        #expect(store.purchase(.croissant) == .alreadyOwned)
+        #expect(store.progress.wallet.coinBalance == afterFirst)
+    }
+
+    @Test("The starter is owned outright rather than bought for nothing")
+    func starterIsAlreadyOwned() {
+        let clock = TestClock(instant(2026, 8, 14, 9))
         let store = BakeryStore(directory: makeTemporaryDirectory(), clock: clock.wallClock)
 
-        store.startSession(recipeID: .chocolateChipCookie, durationMinutes: 200)
-        clock.advance(hours: 4)
-        store.finishActiveSession(as: .completed)
+        #expect(store.purchase(.chocolateChipCookie) == .alreadyOwned)
+    }
 
-        #expect(store.unlock(.croissant))
-        let afterFirst = store.progress.wallet.coinBalance
-        #expect(store.unlock(.croissant) == false)
-        #expect(store.progress.wallet.coinBalance == afterFirst)
+    @Test("The book lists locked recipes with their price and what is still owed")
+    func bookShowsLockedRecipesAndShortfall() throws {
+        let clock = TestClock(instant(2026, 8, 14, 9))
+        let store = storeEarning(fromMinutes: 90, clock: clock)
+        let balance = store.progress.wallet.coinBalance
+
+        let book = store.recipeBook
+        #expect(book.map(\.id) == RecipeCatalog.all.map(\.id))
+
+        let cookie = try #require(book.first { $0.id == .chocolateChipCookie })
+        #expect(cookie.isUnlocked)
+
+        let croissant = try #require(book.first { $0.id == .croissant })
+        #expect(croissant.isUnlocked == false)
+        #expect(croissant.recipe.price == Economy.price(for: .croissant))
+        #expect(croissant.isAffordable)
+        #expect(croissant.coinsShort == 0)
+
+        let cake = try #require(book.first { $0.id == .cake })
+        #expect(cake.isAffordable == false)
+        #expect(cake.coinsShort == Economy.price(for: .cake) - balance)
     }
 
     @Test("Unlocks survive the daily reset and a relaunch")
     func unlocksSurviveResetAndRelaunch() {
         let directory = makeTemporaryDirectory()
         let clock = TestClock(instant(2026, 8, 14, 9))
-        let store = BakeryStore(directory: directory, clock: clock.wallClock)
+        let store = storeEarning(fromMinutes: 90, clock: clock, directory: directory)
 
-        store.startSession(recipeID: .chocolateChipCookie, durationMinutes: 90)
-        clock.advance(hours: 1.5)
-        store.finishActiveSession(as: .completed)
-        #expect(store.unlock(.croissant))
+        #expect(store.purchase(.croissant) == .bought)
+        let balance = store.progress.wallet.coinBalance
 
         clock.advance(hours: 24)
         store.refreshForCurrentDay()
 
         let relaunched = BakeryStore(directory: directory, clock: clock.wallClock)
         #expect(relaunched.isUnlocked(.croissant))
+        #expect(relaunched.progress.wallet.coinBalance == balance)
         #expect(relaunched.today.displayCase.isEmpty)
+    }
+
+    @Test("Unlocks survive a cold start with a bake still in flight")
+    func unlocksSurviveColdStartMidBake() {
+        let directory = makeTemporaryDirectory()
+        let clock = TestClock(instant(2026, 8, 14, 9))
+        let store = storeEarning(fromMinutes: 90, clock: clock, directory: directory)
+
+        #expect(store.purchase(.croissant) == .bought)
+        let balance = store.progress.wallet.coinBalance
+
+        let inFlight = store.startSession(recipeID: .croissant, durationMinutes: 25)
+        #expect(inFlight != nil)
+        clock.advance(minutes: 5)
+
+        let relaunched = BakeryStore(directory: directory, clock: clock.wallClock)
+        #expect(relaunched.isUnlocked(.croissant))
+        #expect(relaunched.progress.wallet.coinBalance == balance)
+        // The bake it was bought for is still running, and still its own.
+        #expect(relaunched.session.active?.id == inFlight?.id)
+        #expect(relaunched.session.active?.recipeID == .croissant)
+    }
+
+    @Test("A burned session pays for nothing, so a pending purchase stays out of reach")
+    func burnedSessionEarnsNothing() {
+        let clock = TestClock(instant(2026, 8, 14, 9))
+        let store = BakeryStore(directory: makeTemporaryDirectory(), clock: clock.wallClock)
+
+        store.startSession(recipeID: .chocolateChipCookie, durationMinutes: 90)
+        clock.advance(minutes: 90)
+        store.finishActiveSession(as: .burned)
+
+        #expect(store.progress.wallet.coinBalance == 0)
+        #expect(store.today.displayCase.isEmpty)
+        #expect(store.purchase(.croissant) == .insufficientFunds(coinsShort: Economy.price(for: .croissant)))
     }
 }

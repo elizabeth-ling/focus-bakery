@@ -14,7 +14,7 @@ struct BakeryStoreTests {
         before.startSession(recipeID: .chocolateChipCookie, durationMinutes: 90)
         clock.advance(hours: 1.5)
         before.finishActiveSession(as: .completed)
-        #expect(before.unlock(.croissant))
+        #expect(before.purchase(.croissant) == .bought)
         before.recordIntention("ship the data layer")
         let inFlight = before.startSession(recipeID: .croissant, durationMinutes: 25)
 
@@ -38,7 +38,7 @@ struct BakeryStoreTests {
         store.startSession(recipeID: .chocolateChipCookie, durationMinutes: 90)
         clock.advance(hours: 1.5)
         store.finishActiveSession(as: .completed)
-        #expect(store.unlock(.croissant))
+        #expect(store.purchase(.croissant) == .bought)
 
         clock.advance(hours: 24)
         let retired = store.refreshForCurrentDay()
