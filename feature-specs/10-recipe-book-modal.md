@@ -11,6 +11,13 @@ visible.
 > book's cover, page, arrows, and stepper controls must all be authored, in the
 > pack's palette so they read as the same app. Budget for it: with world art
 > solved, this and the font (`01`) are what's left.
+>
+> **Authored.** `tools/ui/build_ui.py` draws the book — leather cover, brass
+> corner protectors, stitched page, ribbon bookmark — and the arrow/stepper/
+> button family into `Resources/UI.atlas/`, every colour sampled from the
+> pack's palette. The atlas is committed (it is original art, not pack pixels),
+> so the app builds without Python. What remains of the art budget is settings
+> chrome (`13`) and the app icon.
 
 ## Goal
 
@@ -64,21 +71,79 @@ resolution from the pack. Expect to need a larger multiple here than the room's
 
 ## Acceptance criteria
 
-- [ ] "+" opens the modal; the modal can be dismissed without starting a session.
-- [ ] Arrows cycle only through unlocked recipes.
-- [ ] With one unlocked recipe, the control reads as intentional, not broken.
-- [ ] Duration cannot be set below the minimum or above the maximum.
-- [ ] Starting creates exactly one `.inProgress` session with the chosen recipe
+- [x] "+" opens the modal; the modal can be dismissed without starting a session.
+- [x] Arrows cycle only through unlocked recipes.
+- [x] With one unlocked recipe, the control reads as intentional, not broken.
+- [x] Duration cannot be set below the minimum or above the maximum.
+- [x] Starting creates exactly one `.inProgress` session with the chosen recipe
       and duration, schedules the completion notification (`04`), and returns to
       the main screen with the sprite working.
-- [ ] The modal cannot be opened while a session is in progress (`06`).
-- [ ] Text within the modal uses a single text tier.
+- [x] The modal cannot be opened while a session is in progress (`06`).
+- [x] Text within the modal uses a single text tier.
+
+### How they were checked
+
+The logic is unit-tested (`RecipeBookModalTests`, `BakeDurationTests`): cycling
+wraps, never leaves the unlocked set whatever it is asked from, and stays put
+with one recipe; clamping bounds and snaps every value; starting creates
+exactly one `.inProgress` session with the chosen recipe and duration, refuses
+a second while one is in flight, and refuses a locked recipe even if the input
+layer were to send one. Scheduling and the working sprite are not re-proven
+here because the modal adds no path to them: starting is just the session
+changing, which is what `NotificationSync` (`04`) and the scene sync (`05`)
+already key off, and both have their own tests.
+
+The screen itself was verified by screenshot on the iPhone 16 and the iPhone
+SE (3rd gen) — the book fits both with margin — in both states: one unlocked
+recipe (no arrows, invitation caption) and three (arrows, "Page 1 of 3").
+Launching with `-bakeryRoom -recipeBook` opens the book at startup for
+exactly this purpose, since this machine still has no simulator tap tooling
+(the spec 07 gap). **Still owed the same manual pass as 07's sheets:** nobody
+has yet tapped the arrows, steppers, or start on a device — the by-hand flow
+end to end.
+
+Single tier holds by inspection: every string in the modal is `ChromeFont`
+TTF, and the modal contains no bitmap text to clash with. The duration digits
+sit on SwiftUI chrome, which is the tier the table below this spec's Text
+section prescribes for that case.
+
+## How it is built
+
+- `App/RecipeBookModalView.swift` is a pure view: the caller hands it the
+  unlocked recipes and where to open, and gets back one start or one
+  dismissal. It never touches the store.
+- It is presented as an overlay in `BakeryRoomView` (the spec 06 shell will
+  inherit this), over the dimmed room rather than in a system sheet — sheet
+  chrome around a drawn book is exactly the "generic picker with a skin" this
+  spec forbids. The scaffold "+" replaces the scaffold bake buttons and only
+  exists while nothing is baking.
+- The page art is a fixed 320×480 pt image from the authored `UI.atlas`
+  (`tools/ui/`), not a 9-slice, so its hand-placed details never stretch. The
+  treat is the pack sprite at ×8 — a whole factor, per `01`.
+- The `-recipeBook` launch argument opens the book at startup, joining
+  `-pixelProof` and `-bakeryRoom` as screenshot scaffolding.
 
 ## Open questions
 
-- Duration min, max, and step increment.
-- Whether the last-used duration and recipe are remembered.
-- Whether locked recipes are visible here with their prices, or only in the
-  recipe book.
-- Whether recipes have suggested/native durations, which would tie the two
-  controls together.
+- ~~Duration min, max, and step increment.~~ **Resolved: 5–120 minutes in
+  steps of 5, defaulting to 25.** Below five minutes a bake is a tap, not a
+  commitment, and the burn mechanic has nothing to protect; past two hours one
+  bake stops being one sitting. `BakeDuration` owns the numbers — they are
+  interaction constraints, not economy values, so they live beside the input
+  rather than in `Economy`. The steppers can only move to a clamped value,
+  and they visibly die at the bounds rather than no-opping.
+- ~~Whether the last-used duration and recipe are remembered.~~ **Resolved:
+  both**, in `Settings` (UserDefaults — a preference, not game state), written
+  when a bake starts. Values are clamped on the way out, and a remembered
+  recipe that is somehow not unlocked falls back to the starter.
+- ~~Whether locked recipes are visible here with their prices, or only in the
+  recipe book.~~ **Resolved: only in the book.** The spec's own default —
+  starting a session should be uncluttered, and the aspirational browsing job
+  already has a home where the shortfall can be explained and spent (`07`).
+  The modal still nods to what is missing: with one recipe unlocked the
+  caption reads as an invitation rather than leaving a bare page.
+- ~~Whether recipes have suggested/native durations, which would tie the two
+  controls together.~~ **Resolved: no.** The two controls stay independent;
+  what ties duration to anything is the payout line — the modal writes the
+  coins the chosen duration earns on the page, which is the legibility debt
+  the banded curve left with this spec (`07`).
