@@ -31,6 +31,7 @@ struct PersistencePlaceholderView: View {
                 LabeledContent("Streak", value: "\(store.progress.streak.currentStreak)")
             }
 
+            RecipeBookSection()
             BakeSection()
             NotificationSection()
         }
@@ -68,6 +69,87 @@ struct PersistencePlaceholderView: View {
             Button("OK") { notifications.acknowledgeDenialNotice() }
         } message: { notice in
             Text(notice)
+        }
+    }
+}
+
+/// The by-hand surface for spec 07: the whole book, locked rows included, and
+/// a purchase that has to be confirmed. Spec 10 builds the real recipe-book
+/// modal — this exists so the economy can be spent on a device before it does.
+private struct RecipeBookSection: View {
+    @Environment(BakeryStore.self) private var store
+    @State private var purchasing: RecipeBookEntry?
+    @State private var isConfirming = false
+    @State private var lastResult: String?
+
+    var body: some View {
+        Section("Recipe book") {
+            // Read in the body pass so the rows re-price themselves the moment
+            // a bake pays out (the spec 03 lesson).
+            ForEach(store.recipeBook) { entry in
+                row(entry)
+            }
+            if let lastResult {
+                Text(lastResult).foregroundStyle(.secondary)
+            }
+        }
+        .confirmationDialog(
+            purchasing?.isAffordable == true ? "Buy this recipe?" : "Not enough coins",
+            isPresented: $isConfirming,
+            titleVisibility: .visible,
+            presenting: purchasing
+        ) { entry in
+            // Spec 07 asks that spending earned currency feel deliberate, so
+            // the buy is confirmed rather than done on the first tap.
+            if entry.isAffordable {
+                Button("Bake it forever") { buy(entry) }
+                Button("Not yet", role: .cancel) {}
+            } else {
+                Button("OK", role: .cancel) {}
+            }
+        } message: { entry in
+            Text(explanation(for: entry))
+        }
+    }
+
+    /// A locked row is tappable whether or not it is affordable: spec 07 wants
+    /// a short balance *explained*, and a disabled control explains nothing.
+    @ViewBuilder
+    private func row(_ entry: RecipeBookEntry) -> some View {
+        if entry.isUnlocked {
+            LabeledContent(entry.recipe.name, value: "in the book")
+        } else {
+            Button {
+                purchasing = entry
+                isConfirming = true
+            } label: {
+                LabeledContent(entry.recipe.name) {
+                    Text(entry.isAffordable
+                         ? "\(entry.recipe.price) coins"
+                         : "\(entry.recipe.price) coins · \(entry.coinsShort) to go")
+                }
+            }
+        }
+    }
+
+    private func explanation(for entry: RecipeBookEntry) -> String {
+        let balance = store.progress.wallet.coinBalance
+        let opening = "\(entry.recipe.name) costs \(entry.recipe.price) coins. You have \(balance)"
+        return entry.isAffordable
+            ? "\(opening)."
+            : "\(opening) — \(entry.coinsShort) more to go."
+    }
+
+    private func buy(_ entry: RecipeBookEntry) {
+        switch store.purchase(entry.id) {
+        case .bought:
+            lastResult = "Bought \(entry.recipe.name)."
+        case .alreadyOwned:
+            lastResult = "\(entry.recipe.name) was already in the book."
+        // Reachable despite the affordable check above: the display tick can
+        // resolve a bake, and the daily reset can run, while the dialog is up.
+        case .insufficientFunds(let coinsShort):
+            lastResult = "\(coinsShort) coins short of \(entry.recipe.name)."
         }
     }
 }
