@@ -6,20 +6,23 @@ import CoreGraphics
 /// size and magnified by a whole number of points, never anything in between.
 /// Everything that draws goes through these constants or through `RoomLayout`.
 enum PixelGrid {
-    /// Spec 14 standardizes on 32×32. The pack ships 16×16 and 48×48 beside it,
+    /// Spec 14 standardizes on 16×16. The pack ships 32×32 and 48×48 beside it,
     /// so a wrong path is one character away.
-    static let artPixelsPerTile = 32
+    static let artPixelsPerTile = 16
 
     /// Integer scales the room may resolve to, largest first. There is no ×1:
-    /// a 32pt tile would put more than a dozen tiles across a phone and read as
-    /// a map rather than a room.
+    /// a 16pt tile draws an art pixel smaller than the chrome's, which is the
+    /// one thing the uniform-pixel rule forbids.
     static let candidateScales = [4, 3, 2]
 
     /// Below this the room stops being a bakery with a back and a front of
     /// house (05), so a larger scale that cannot seat it is rejected. This is
     /// what resolves the scale to ×2 on every supported iPhone rather than
     /// letting big devices step to ×3 and show *fewer*, bigger tiles.
-    static let smallestUsefulRoom = (columns: 5, rows: 8)
+    ///
+    /// It is a tile count, so halving the art size doubles it: the room this
+    /// describes is the same physical 320×512pt either way.
+    static let smallestUsefulRoom = (columns: 10, rows: 16)
 
     /// Points per art pixel for SwiftUI chrome — spec 01's "1 art pixel = N
     /// screen points" for the off-scene tier. It matches the room's ×2 so a

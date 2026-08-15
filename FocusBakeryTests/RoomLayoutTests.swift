@@ -24,11 +24,11 @@ struct RoomLayoutTests {
         }
     }
 
-    @Test("One tile is 32 art pixels, 64pt, on every supported iPhone")
+    @Test("One tile is 16 art pixels, 32pt, on every supported iPhone")
     func tileSizeIsConstant() {
         for phone in supportedPhones {
             let layout = RoomLayout(fitting: phone.size)
-            #expect(layout.tileSize == 64)
+            #expect(layout.tileSize == 32)
             #expect(layout.tileSize == CGFloat(PixelGrid.artPixelsPerTile * layout.scale))
         }
     }
@@ -41,8 +41,8 @@ struct RoomLayoutTests {
         #expect(small.tileSize == large.tileSize)
         #expect(large.columns > small.columns)
         #expect(large.rows > small.rows)
-        #expect((small.columns, small.rows) == (5, 10))
-        #expect((large.columns, large.rows) == (6, 14))
+        #expect((small.columns, small.rows) == (11, 20))
+        #expect((large.columns, large.rows) == (13, 29))
     }
 
     @Test("The room is whole tiles and the remainder becomes margin")
@@ -118,7 +118,7 @@ struct RoomLayoutTests {
     @Test("A scene large enough for a bigger room steps the scale up, not the room out")
     func hugeSceneStepsScaleUp() {
         // No iPhone is this big; the rule is what keeps the resolver honest if
-        // one ever is, rather than growing the room to twenty tiles across.
+        // one ever is, rather than growing the room to thirty tiles across.
         let layout = RoomLayout(fitting: CGSize(width: 1024, height: 1366))
 
         #expect(layout.scale == 4)
