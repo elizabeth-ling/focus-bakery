@@ -27,6 +27,11 @@ xcuserdata/
 # it keeps the app buildable without Python for anyone who only wants to run it.
 !/Resources/Font.atlas/
 
+# ...and the UI chrome, which is authored in this repo (tools/ui/build_ui.py),
+# not sliced from the pack. Original art, safe to commit; only its colours were
+# sampled from the pack's palette, and colours are not pixels.
+!/Resources/UI.atlas/
+
 # Python bytecode from the tools/ scripts.
 __pycache__/
 *.pyc
