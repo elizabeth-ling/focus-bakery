@@ -36,18 +36,30 @@ prep/oven area at the back, glass case mid-room, seating at the front. **Use it
 as the layout reference for the bakery.** It is nearly the target composition
 already.
 
-## Resolution — 32×32, decided
+## Resolution — 16×16, decided
 
 The pack ships at 16×16, 32×32, and 48×48. **The project standardizes on
-32×32.** Do not mix resolutions; every atlas, every sprite, one tile size.
+16×16.** Do not mix resolutions; every atlas, every sprite, one tile size.
 
-- 16×16 reads as 8-bit/NES, which `01` explicitly warns against.
 - 48×48 leaves only ~4 tiles across a portrait iPhone at ×2 — too cramped for a
   room with both a kitchen and a shop floor.
+- 32×32 was the original choice and was **reversed**: at ×2 the fixtures read too
+  large, and integer scaling gave no step between a 64pt tile and a 32pt one. The
+  16×16 tier reaches the same 32pt tile at ×2 while keeping 48pt and 64pt
+  available, so the room's size is tunable without breaking the uniform-pixel
+  rule.
+- Little real detail was given up. The 32×32 tier is largely the 16×16 art
+  upscaled 2× with a light touch-up pass: the industrial oven strip is
+  pixel-identical to a nearest-neighbour 2× of its 16×16 source, and the
+  characters and treat singles differ by only 5–11% of their pixels.
+- 16×16 does read chunkier, closer to the 8-bit look `01` warns against. That is
+  the accepted cost of the smaller room.
 
-At 32×32 with integer scale ×2 (1 art px = 2pt, tile = 64pt), a 393×852pt
-portrait iPhone shows roughly **6 tiles wide × 13 tall** — a narrow, deep
-bakery, which suits the back-of-house / front-of-house split (`06`).
+At 16×16 with integer scale ×2 (1 art px = 2pt, tile = 32pt), a 393×852pt
+portrait iPhone shows roughly **12 tiles wide × 26 tall**. That is a much larger
+grid than the 6×13 the 32×32 build produced, so `05`'s fixture list — a 2-tile
+oven, a prep counter, two seats — now sits in a noticeably emptier room. Filling
+it out is open work, not a regression in the scaling helper.
 
 Exact room dimensions and the scale factor per device class are resolved by the
 scaling helper in `01`, not hardcoded here.
@@ -56,10 +68,10 @@ scaling helper in `01`, not hardcoded here.
 
 Frame geometry is derived from image dimensions; these are measured, not assumed.
 
-- **Character sheets** — `2_Characters/Character_Generator/**/32x32/`. Each sheet
-  is 1792×1312, but the frames are **32 wide × 64 tall** — a character is one
+- **Character sheets** — `2_Characters/Character_Generator/**/16x16/`. Each sheet
+  is 896×656, but the frames are **16 wide × 32 tall** — a character is one
   tile wide and two tall. That is a **56 × 20** frame grid filling the top
-  1792×1280, plus a trailing 32px empty strip. **Slicing these at 32×32 cuts
+  896×640, plus a trailing 16px empty strip. **Slicing these at 16×16 cuts
   every character in half at the waist.** Row meanings are documented in
   `Spritesheet_animations_GUIDE.png`; read it before slicing.
   - Row 0 is a 4-frame standing pose, one per direction; rows 1–19 are the
@@ -72,17 +84,21 @@ Frame geometry is derived from image dimensions; these are measured, not assumed
   - Frames per direction vary by animation (idle and walk 6, pick up 12, lift
     and throw 14), so it is per-animation data, not a constant.
   - **Not every generator layer shares the sheet width.** The nine `Bodies`
-    sheets and the four `Accessory_19_Party_Cone` sheets are 1854 wide — not a
-    multiple of 32 — while the premades and every other layer are a clean 1792.
+    sheets and the four `Accessory_19_Party_Cone` sheets are 927 wide — not a
+    multiple of 16 — while the premades and every other layer are a clean 896.
     Compositing across that mismatch misaligns the grid.
 - **Animated objects** — horizontal frame strips whose frame size is the object's
   footprint, not one tile. Frame count = image width ÷ footprint width. Measured
   examples:
-  - `animated_grocery_store_bakery_industrial_oven_up_32x32.png` — 256×96 =
-    **4 frames of 64×96** (2 tiles wide, 3 tall).
-  - `animated_canteen_fridge_cake_1_32x32.png` — 384×96 = **12 frames of 32×96**.
+  - `animated_grocery_store_bakery_industrial_oven_up.png` — 128×48 =
+    **4 frames of 32×48** (2 tiles wide, 3 tall).
+  - `animated_canteen_fridge_cake_2.png` — 192×48 = **12 frames of 16×48**.
+- **The 16×16 tier is missing some spritesheets the 32×32 tier ships.**
+  `animated_canteen_fridge_cake_1` exists only as a GIF here, so the display case
+  uses the `_2` variant — the same cabinet and frame count with a different cake
+  inside. Check for a PNG before assuming a 32×32 filename has a 16×16 twin.
 - Some animated-object filenames encode their loop range, e.g.
-  `..._3-10 loop_32x32.png` means frames 3–10 are the loop and the earlier frames
+  `..._3-10 loop.png` means frames 3–10 are the loop and the earlier frames
   are a one-shot intro. **Honor this** — looping the whole strip plays the intro
   on repeat and looks wrong. Note the space in those filenames.
 
@@ -99,10 +115,10 @@ character customization is out of scope; if it ever lands, the layer order above
 is what makes it possible, so do not flatten in a way that discards it.
 
 **Resolved: the baker is a premade plus the chef hat.** The pack has no chef or
-apron *outfit*, but it does have `Accessories/32x32/Accessory_18_Chef` — so a
+apron *outfit*, but it does have `Accessories/16x16/Accessory_18_Chef` — so a
 premade alone never reads as a baker, and the full five-layer composite is not
 needed either. A premade collapses BODY→EYES→OUTFIT→HAIRSTYLE, and the chef hat
-lays over it on the same 1792×1312 grid. That makes the baker a **two-layer
+lays over it on the same 896×656 grid. That makes the baker a **two-layer
 composite**, listed in order in the atlas manifest and flattened at build time.
 
 ### There is no baking animation — plan around it
@@ -188,16 +204,16 @@ Consequences for this repo:
 
 ## Acceptance criteria
 
-- [ ] Every in-world sprite in the app traces to a 32×32 pack asset or to art
+- [ ] Every in-world sprite in the app traces to a 16×16 pack asset or to art
       authored deliberately to fill one of the three named gaps.
-- [ ] No 16×16 or 48×48 asset ships.
+- [ ] No 32×32 or 48×48 asset ships.
 - [ ] Animated objects with an encoded loop range loop only that range.
 - [ ] The baker is one pre-composited atlas, not runtime-layered.
 - [ ] `assets/` is absent from `git ls-files`, and so is every generated atlas.
 - [ ] `limezu.itch.io` attribution is present in-app and in store metadata.
 - [x] Atlas generation is reproducible from the source pack —
       `tools/atlas/build_atlases.py`, driven by `manifest.json`.
-- [x] Character frames are sliced at 32×64 on the 56×20 grid, with direction
+- [x] Character frames are sliced at 16×32 on the 56×20 grid, with direction
       blocks in right/up/left/down order.
 
 ## Gotchas
@@ -206,20 +222,22 @@ Consequences for this repo:
   `Theme_Sorter` sheets are packed grids. Singles are far easier to work with for
   fixtures; the packed sheets are better for floors and walls. Use both, and
   don't hand-crop from a packed sheet when a single already exists.
-- Reaching for 16×16 "just for this one icon" breaks the uniform-pixel rule in
-  `01` at its most load-bearing point.
+- Reaching for 32×32 "just for this one icon" breaks the uniform-pixel rule in
+  `01` at its most load-bearing point. It is the likeliest slip here, because the
+  32×32 tier was the project's original standard and older notes still name it.
 - The pack being large invites browsing instead of building. The room layout is
   already solved by the ice-cream-shop reference — start there. Use
   `tools/atlas/contact_sheet.py` to find a sprite rather than opening folders;
   the singles are numbered, not named.
 - **The reference layout does not fit the target aspect.** The ice-cream shop is
-  384×320 = 12 wide × 10 tall, but `01`'s ×2 scale on a portrait iPhone gives
-  roughly 6 wide × 13 tall. It is the right *composition* — prep at the back,
-  case mid-room, seating at the front — but it has to be re-proportioned into a
-  narrow, deep room, not copied.
+  12 tiles wide × 10 tall, but `01`'s ×2 scale on a portrait iPhone gives roughly
+  12 wide × 26 tall. The width now matches; the depth does not. It is the right
+  *composition* — prep at the back, case mid-room, seating at the front — but it
+  has to be re-proportioned into a deeper room, not copied.
 - The pack has no clean single chocolate-chip cookie, which `07` mandates as the
   starter recipe. The closest are the Christmas theme's cookie plates
-  (`Christmas_Singles_Shadowless_32x32_120..122`). Worth a look before the
+  (`Christmas_SIngles_Shadowless_120..122` — the capital I is the pack's typo,
+  and singles keep their numbering across resolution tiers). Worth a look before the
   recipe list is fixed.
 
 ## Open questions

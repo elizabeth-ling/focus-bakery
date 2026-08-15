@@ -31,10 +31,10 @@ text.
 top-down room (`06`), not a half-screen panel, so the canvas is sized from the
 tile grid rather than from an arbitrary virtual resolution.
 
-- **Tile size is 32×32, fixed** (`14`). Every in-world asset is authored at this
+- **Tile size is 16×16, fixed** (`14`). Every in-world asset is authored at this
   size; the grid unit is one tile.
-- **Baseline scale is ×2** — 1 art pixel = 2 points, so one tile = 64pt. On a
-  393×852pt portrait iPhone that yields roughly **6 tiles wide × 13 tall**.
+- **Baseline scale is ×2** — 1 art pixel = 2 points, so one tile = 32pt. On a
+  393×852pt portrait iPhone that yields roughly **12 tiles wide × 26 tall**.
 - **Room dimensions flex with the device; the tile size never does.** Compute how
   many whole tiles fit the available area at the chosen integer scale, and lay
   the room out to that. A larger phone sees slightly more room, not bigger
@@ -134,10 +134,11 @@ art, and `14`'s licence forbids redistributing it.
 - Watch for **text tier bleed**: an `SKLabelNode` or system `Text` accidentally
   sitting next to bitmap numbers. Re-check this whenever scene layout changes.
 - The early HTML prototype's 16×16 sprites with tiny palettes read as 8-bit/NES.
-  The pack's 32×32 set is the 16-bit-era read the project wants — which is
-  exactly why `14` forbids dropping to the 16×16 variant for convenience.
+  The pack's 16×16 set is far richer than that prototype, but it is closer to
+  that read than the 32×32 tier was — a known cost of the smaller room (`14`),
+  so hold the palette side of the 16-bit look where the resolution can't.
 - **Mixed tile sizes are the new sharpest edge.** The pack ships three
-  resolutions side by side, so grabbing a 16×16 icon "just this once" is a single
+  resolutions side by side, so grabbing a 32×32 icon "just this once" is a single
   wrong `cd` away, and it violates the uniform-pixel rule at its most
   load-bearing point.
 

@@ -30,9 +30,10 @@ skin. The arrows-around-an-image pattern is deliberate and should feel like
 turning pages.
 
 The baked-good images themselves are pack treat sprites (`07`, `14`), shown at an
-integer scale like everything else (`01`). A 32×32 treat is small for a hero
+integer scale like everything else (`01`). A 16×16 treat is very small for a hero
 image — scale it up by a whole factor rather than reaching for a different
-resolution from the pack.
+resolution from the pack. Expect to need a larger multiple here than the room's
+×2; ×6 or ×8 is still uniform pixels.
 
 ## Recipe selection
 

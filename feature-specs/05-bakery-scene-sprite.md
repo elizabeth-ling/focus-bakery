@@ -112,7 +112,7 @@ case, not replay the deliver walk from the beginning at the wrong moment (`06`).
 
 Inherits every rule from `01`, restated because this is where they break:
 
-- 32×32 tiles, integer scale, room dimensions flexing per device.
+- 16×16 tiles, integer scale, room dimensions flexing per device.
 - `filteringMode = .nearest` on every texture at load.
 - Sprite positions snapped to whole grid units.
 - Walk animation in whole grid units — no sub-pixel tweens, which shimmer. This

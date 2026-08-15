@@ -42,7 +42,7 @@ Native **Swift**, Apple-only. Do **not** build a web/WKWebView wrapper.
 |---|---|---|
 | App shell | SwiftUI | Navigation, chrome, menus, settings, modals, lists, `scenePhase`, persistence, notification scheduling |
 | Animated scene | SpriteKit via `SpriteView` | The top-down bakery room, baker sprite and walk choreography, animated fixtures, in-scene bitmap text, per-frame updates |
-| In-world art | Modern Interiors (LimeZu), 32×32 | Room, fixtures, baker, treats — see `14` |
+| In-world art | Modern Interiors (LimeZu), 16×16 | Room, fixtures, baker, treats — see `14` |
 | Persistence | SwiftData *or* `Codable` to disk | Small dataset — do not over-engineer. UserDefaults is fine for a few counters |
 | Notifications | `UNUserNotificationCenter` | Session-complete and daily reminder |
 

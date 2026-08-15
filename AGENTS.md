@@ -18,8 +18,9 @@ alwaysApply: true
 - **`assets/` is gitignored and must stay that way.** The pack's licence
   prohibits redistribution, so committing it — even partially — is a licence
   violation. Do not add exceptions to `.gitignore` for it.
-- **Use the 32×32 assets only.** The pack also ships 16×16 and 48×48; mixing tile
-  sizes breaks the project's uniform-pixel rule.
+- **Use the 16×16 assets only.** The pack also ships 32×32 and 48×48; mixing tile
+  sizes breaks the project's uniform-pixel rule. The project ran on 32×32 until
+  Aug 2026, so older notes and commits still name that tier — they are stale.
 - Credit to `limezu.itch.io` is required, ships in the app's settings footer, and
   is not optional.
 - Do not author custom in-world art when the pack covers it. The remaining art

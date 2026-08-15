@@ -26,7 +26,7 @@ Each recipe needs: name, sprite, coin price, unlock state (`02`).
 
 **Recipe sprites come from the asset pack** (`14`) — the Kitchen, Grocery store,
 and Ice Cream Shop themes between them cover cookies, cakes, breads, and
-pastries. Pick the 5–6 recipes from what the pack renders well at 32×32, rather
+pastries. Pick the 5–6 recipes from what the pack renders well at 16×16, rather
 than picking names first and then hunting for art. Each treat needs to read at
 two sizes: inside the display case in-world (`08`) and in the recipe-book modal
 (`10`).

@@ -28,7 +28,7 @@ enum RecipeCatalog {
     static let starter: RecipeID = .chocolateChipCookie
 
     /// Sprite names track the treats the atlas pipeline already slices. Spec 07
-    /// asks for recipes chosen from what the pack renders well at 32x32 rather
+    /// asks for recipes chosen from what the pack renders well at 16x16 rather
     /// than names picked first, and marks the final set as still open.
     static func recipe(for id: RecipeID) -> Recipe {
         switch id {

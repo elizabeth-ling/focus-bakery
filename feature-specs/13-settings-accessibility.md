@@ -46,9 +46,12 @@ same app.
   minimally the case (tappable, `08`) and a description of what the baker is
   doing, since "the baker is working" is state the sighted user reads at a glance
   and a VoiceOver user otherwise cannot reach at all.
-- **In-world tap targets must meet minimum hit size.** A 32×32 sprite at ×2 is
-  64pt, which clears it — but only if the tap region is the sprite's full extent
-  and not a smaller inner rect.
+- **In-world tap targets must meet minimum hit size.** A single 16×16 tile at ×2
+  is 32pt, which does **not** clear the 44pt minimum — so a tap region can no
+  longer be one tile. It must span the fixture's full extent, and where that is
+  still under 44pt in either axis, be padded out beyond the sprite. The display
+  case's region already spans the whole counter line and three tiles of height,
+  so it clears; anything tappable added later has to be checked, not assumed.
 - **Dynamic Type where it fits** — chrome should respond to text size. The pixel
   scene cannot scale fractionally (`01`), so it doesn't participate; make sure
   chrome that grows doesn't crowd or clip the scene.
