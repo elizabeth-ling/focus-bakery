@@ -38,6 +38,8 @@ struct Settings {
         static let dailyReminderEnabled = "dailyReminderEnabled"
         static let dailyReminderMinutes = "dailyReminderMinutes"
         static let hasSeenNotificationNotice = "hasSeenNotificationNotice"
+        static let lastBakeDurationMinutes = "lastBakeDurationMinutes"
+        static let lastBakeRecipeID = "lastBakeRecipeID"
     }
 
     private let defaults: UserDefaults
@@ -86,6 +88,28 @@ struct Settings {
     var hasSeenNotificationNotice: Bool {
         get { flag(Key.hasSeenNotificationNotice, default: false) }
         nonmutating set { defaults.set(newValue, forKey: Key.hasSeenNotificationNotice) }
+    }
+
+    /// What the recipe book opens showing (spec 10). Clamped on the way out,
+    /// so a stale or hand-edited preference is a wrong duration, never an
+    /// absurd one.
+    var lastBakeDurationMinutes: Int {
+        get {
+            guard let minutes = defaults.object(forKey: Key.lastBakeDurationMinutes) as? Int else {
+                return BakeDuration.defaultMinutes
+            }
+            return BakeDuration.clamped(minutes)
+        }
+        nonmutating set { defaults.set(newValue, forKey: Key.lastBakeDurationMinutes) }
+    }
+
+    /// Nil until a first bake is started, and nil again if the stored value
+    /// stops naming a recipe; the caller falls back to the starter.
+    var lastBakeRecipeID: RecipeID? {
+        get {
+            (defaults.string(forKey: Key.lastBakeRecipeID)).flatMap(RecipeID.init(rawValue:))
+        }
+        nonmutating set { defaults.set(newValue?.rawValue, forKey: Key.lastBakeRecipeID) }
     }
 
     /// `object(forKey:)` rather than `bool(forKey:)`, which cannot tell "off"
