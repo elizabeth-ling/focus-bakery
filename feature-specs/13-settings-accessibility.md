@@ -117,7 +117,14 @@ same app.
   of the chrome tray the gear sits at (`06`), so the drawer opens out from under
   its own control; it stops short of the trailing edge so a strip of room stays
   visible beside it and the tray reads as pulled over the bakery rather than
-  navigated to. Covering the viewport means covering the status bar, so it caps
+  navigated to. The grabber and the swipe-to-close came free with the system
+  sheet and do not with an overlay, so they are rebuilt: a bar down the moving
+  edge, with the drag read from the whole lane around it and the content padded
+  clear of that lane, so a swipe can never start on a switch. It closes past a
+  third of the tray's width or on a throw that would have got there, and it is
+  hidden from VoiceOver, which has "Done" — a swipe with no discrete position to
+  land on is not a control that can be described. Covering the viewport means
+  covering the status bar, so it caps
   its own top band in `PixelInk.leather`: the clock is pinned to light content
   because it sits on the chrome tray (`06`), and cream under white glyphs is the
   one place that pinning would come out unreadable.

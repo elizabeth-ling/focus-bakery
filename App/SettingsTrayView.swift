@@ -37,8 +37,17 @@ struct SettingsTrayView: View {
     @State private var isHapticsOn = true
     @State private var isReminderOn = false
     @State private var reminderTime = Date()
+    /// How far the tray has been dragged towards its own edge. Never reset on
+    /// a dismissal: the tray is being removed, and its state goes with it, so
+    /// zeroing it here would snap it back a frame before it left.
+    @State private var dragOffset: CGFloat = 0
 
     private let settings = Settings()
+
+    /// The strip along the moving edge that the handle sits in and the drag is
+    /// read from. The content is padded clear of it, so a drag that starts on
+    /// the lane is never a drag that started on a switch.
+    private static let handleLane: CGFloat = 24
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -52,13 +61,19 @@ struct SettingsTrayView: View {
                     }
                     footer
                 }
-                .padding(.horizontal, 20)
+                .padding(.leading, 20)
+                .padding(.trailing, Self.handleLane + 8)
                 // The tray covers the viewport outright, so there is no safe
                 // area left inside it to read: the status bar and the home
                 // indicator are cleared with the insets the layout was handed.
                 .padding(.top, layout.safeAreaTop + 20)
                 .padding(.bottom, layout.safeAreaBottom + 20)
             }
+            // The lane belongs to the handle. A scroll indicator rides the same
+            // edge, and two thin vertical bars a few points apart is one bar
+            // that means two things — the reader would find out which by
+            // dragging the wrong one.
+            .scrollIndicators(.hidden)
             // The status bar's band, in the tray's own material rather than its
             // paper. The clock is pinned to light content because it sits on the
             // chrome tray (06), and a tray that covers the viewport puts cream
@@ -67,9 +82,11 @@ struct SettingsTrayView: View {
             // means the whole band stays dark and the pinning stays true.
             PixelInk.leather
                 .frame(height: layout.safeAreaTop)
+            handle
         }
         .frame(width: layout.settingsTray.width, height: layout.settingsTray.height)
         .background(PixelInk.paper)
+        .offset(x: dragOffset)
         .task {
             isSoundOn = settings.soundEnabled
             isHapticsOn = settings.hapticsEnabled
@@ -95,6 +112,51 @@ struct SettingsTrayView: View {
             settings.dailyReminderTime = TimeOfDay(hour: parts.hour ?? 0, minute: parts.minute ?? 0)
             onReminderChanged()
         }
+    }
+
+    /// What the bottom sheet used to get from the system: something to take
+    /// hold of, and a swipe that closes. The sheet's grabber sat on the edge it
+    /// moved along, so this one does too — down the trailing side, the edge that
+    /// travels, rather than across the top.
+    ///
+    /// A bar rather than a capsule. Every corner in this app is a right angle on
+    /// the grid (01), and a rounded pill would be the one curve on screen; the
+    /// bar is 2 art pixels by 22 at the chrome's scale, so it magnifies like
+    /// everything else.
+    ///
+    /// The drag reads from the whole lane, not from the bar, so the target is
+    /// wide enough to find without looking. It is hidden from VoiceOver, which
+    /// has "Done" — a swipe with no discrete position to land on is not a
+    /// control that can be described.
+    private var handle: some View {
+        Rectangle()
+            .fill(PixelInk.body.opacity(0.45))
+            .frame(width: 4, height: 44)
+            .frame(width: Self.handleLane)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .gesture(dismissDrag)
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .accessibilityHidden(true)
+    }
+
+    /// Follows the finger towards the tray's own edge and closes if it is taken
+    /// far enough, or thrown hard enough that it would have got there.
+    ///
+    /// `min(0,)` is the same bound a sheet has at the top of its travel: the
+    /// tray can be pulled shut but not dragged open past the edge it rests on.
+    private var dismissDrag: some Gesture {
+        DragGesture()
+            .onChanged { drag in
+                dragOffset = min(0, drag.translation.width)
+            }
+            .onEnded { drag in
+                if drag.predictedEndTranslation.width < -layout.settingsTray.width / 3 {
+                    onDismiss()
+                } else {
+                    withAnimation(.easeOut(duration: 0.2)) { dragOffset = 0 }
+                }
+            }
     }
 
     private var header: some View {
