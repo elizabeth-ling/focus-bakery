@@ -94,10 +94,6 @@ struct SettingsSheetView: View {
         VStack(alignment: .leading, spacing: 12) {
             toggle("Sound", isOn: $isSoundOn)
             toggle("Haptics", isOn: $isHapticsOn)
-            // Worth saying out loud rather than leaving to be discovered: this
-            // is a focus app, and the fear it has to answer is that starting a
-            // bake will stop the music you started it for.
-            note("The bakery mixes under whatever you're listening to, and goes quiet with your silent switch.")
         }
     }
 
