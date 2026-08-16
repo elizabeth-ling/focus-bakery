@@ -112,6 +112,26 @@ struct RoomPlan: Equatable {
     }
 }
 
+extension RoomPlan {
+    /// The display case's extent in scene coordinates: the counter line it
+    /// stands at the end of, three tiles tall.
+    ///
+    /// One place rather than two because it is both the tap target and the
+    /// frame VoiceOver reads (08, 13) — and because a single tile is 32pt at
+    /// ×2, under the 44pt minimum, so the region has to be the fixture's full
+    /// extent rather than the tile the sprite sits on.
+    func caseRegion(in layout: RoomLayout) -> CGRect {
+        let base = layout.tileRect(column: caseColumn, row: counterRow)
+        let end = layout.tileRect(column: shelfColumns.upperBound, row: counterRow)
+        return CGRect(
+            x: base.minX,
+            y: base.minY,
+            width: end.maxX - base.minX,
+            height: layout.tileSize * 3
+        )
+    }
+}
+
 extension RoomLayout {
     /// The scene position of a tile — its bottom-left corner, where a
     /// zero-anchored sprite standing on that tile goes.

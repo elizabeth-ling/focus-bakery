@@ -5,6 +5,20 @@ struct TreatTally: Identifiable, Hashable, Sendable {
     let count: Int
 
     var id: RecipeID { recipeID }
+
+    /// Distinct recipes in first-baked order, with how many of each.
+    ///
+    /// Shared by the case in the room and the sheet that lists it, so a
+    /// quantity can never read one way in-scene and another in the list.
+    static func tallied(_ treats: [RecipeID]) -> [TreatTally] {
+        var order: [RecipeID] = []
+        var counts: [RecipeID: Int] = [:]
+        for treat in treats {
+            if counts[treat] == nil { order.append(treat) }
+            counts[treat, default: 0] += 1
+        }
+        return order.map { TreatTally(recipeID: $0, count: counts[$0] ?? 0) }
+    }
 }
 
 /// Today's output. Fills as you bake and rolls over each morning — this is not
@@ -40,13 +54,5 @@ struct DisplayCaseDay: Codable, Hashable, Sendable {
     }
 
     /// Distinct recipes in first-baked order, with how many of each.
-    var tallies: [TreatTally] {
-        var order: [RecipeID] = []
-        var counts: [RecipeID: Int] = [:]
-        for treat in treats {
-            if counts[treat] == nil { order.append(treat) }
-            counts[treat, default: 0] += 1
-        }
-        return order.map { TreatTally(recipeID: $0, count: counts[$0] ?? 0) }
-    }
+    var tallies: [TreatTally] { TreatTally.tallied(treats) }
 }
