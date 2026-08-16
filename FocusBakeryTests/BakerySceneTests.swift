@@ -118,15 +118,15 @@ struct BakerySceneTests {
             phase: .baking(secondsRemaining: 1),
             treats: [.chocolateChipCookie]
         ))
-        #expect(scene.visibleTreatCount == 1)
+        #expect(scene.displayedTreats == [TreatTally(recipeID: .chocolateChipCookie, count: 1)])
 
         // The store records the treat at completion (02); the walk has not
-        // happened yet, so the case must still show one.
+        // happened yet, so the case must still show the earlier count.
         scene.apply(BakeryScene.Model(
             phase: .delivering(.chocolateChipCookie),
             treats: [.chocolateChipCookie, .chocolateChipCookie]
         ))
-        #expect(scene.visibleTreatCount == 1)
+        #expect(scene.displayedTreats == [TreatTally(recipeID: .chocolateChipCookie, count: 1)])
 
         // However the delivery ends — placed, interrupted, acknowledged — an
         // idle room shows everything the store says exists.
@@ -134,7 +134,22 @@ struct BakerySceneTests {
             phase: .idle,
             treats: [.chocolateChipCookie, .chocolateChipCookie]
         ))
-        #expect(scene.visibleTreatCount == 2)
+        #expect(scene.displayedTreats == [TreatTally(recipeID: .chocolateChipCookie, count: 2)])
+    }
+
+    @Test("Repeated bakes of one recipe raise a quantity instead of taking slots")
+    func repeatedBakesAccumulateAsQuantities() {
+        let scene = makeScene()
+        scene.apply(BakeryScene.Model(
+            phase: .idle,
+            treats: [.chocolateChipCookie, .croissant, .chocolateChipCookie, .chocolateChipCookie]
+        ))
+        // First-baked order, so the counter does not reshuffle as counts climb.
+        #expect(scene.displayedTreats == [
+            TreatTally(recipeID: .chocolateChipCookie, count: 3),
+            TreatTally(recipeID: .croissant, count: 1),
+        ])
+        #expect(scene.visibleSlotCount == 2)
     }
 
     @Test("A burned bake adds nothing and sends the baker home")
@@ -143,7 +158,7 @@ struct BakerySceneTests {
         scene.apply(BakeryScene.Model(phase: .baking(secondsRemaining: 300)))
         scene.apply(BakeryScene.Model(phase: .idle))
         #expect(scene.activity == .resting)
-        #expect(scene.visibleTreatCount == 0)
+        #expect(scene.visibleSlotCount == 0)
         #expect(!scene.isOvenRunning)
     }
 
@@ -174,15 +189,57 @@ struct BakerySceneTests {
 
         scene.apply(BakeryScene.Model(phase: .idle, treats: [.cake], reduceMotion: true))
         #expect(activities(serving: .idle).contains(scene.activity))
-        #expect(scene.visibleTreatCount == 1)
+        #expect(scene.visibleSlotCount == 1)
     }
 
-    @Test("The shelf shows at most one treat per slot and keeps completion order")
-    func shelfCapsAtItsSlots() {
-        let scene = makeScene()
-        let plan = RoomPlan(fitting: RoomLayout(fitting: scene.size))
-        let treats = Array(repeating: RecipeID.chocolateChipCookie, count: plan.shelfColumns.count + 3)
-        scene.apply(BakeryScene.Model(phase: .idle, treats: treats))
-        #expect(scene.visibleTreatCount == plan.shelfColumns.count)
+    /// Spec 08's overflow criterion. Quantities are what make it hold: slots are
+    /// spent per recipe, so a heavy day raises counts rather than reaching for
+    /// shelf the room does not have.
+    @Test("A heavy day neither drops a treat from the record nor spills sprites")
+    func aHeavyDayStaysInsideTheCase() throws {
+        let sizes = [
+            CGSize(width: 393, height: 852),
+            CGSize(width: 440, height: 956),
+            CGSize(width: 320, height: 568),
+        ]
+        for size in sizes {
+            let scene = makeScene(size: size)
+            let plan = RoomPlan(fitting: RoomLayout(fitting: scene.size))
+            // Forty bakes across the whole catalogue: far more than the shelf
+            // has slots, and every recipe represented.
+            let treats = (0..<40).map { RecipeID.allCases[$0 % RecipeID.allCases.count] }
+            scene.apply(BakeryScene.Model(phase: .idle, treats: treats))
+
+            #expect(scene.visibleSlotCount <= plan.shelfColumns.count)
+            // Nothing silently vanishes: every recipe baked is still on show,
+            // and the counts sum to the true tally.
+            #expect(scene.displayedTreats.count == RecipeID.allCases.count)
+            #expect(scene.displayedTreats.reduce(0) { $0 + $1.count } == treats.count)
+
+            // And nothing spills into the room: every slot the case draws sits
+            // within the case's own extent.
+            let region = try #require(scene.caseRegion)
+            for frame in scene.shelfSlotFrames {
+                #expect(region.contains(frame), "\(frame) escaped \(region) at \(size)")
+            }
+        }
+    }
+
+    /// The invariant behind the criterion above: while the catalogue is smaller
+    /// than the shelf, a full case is unreachable and no treat is ever hidden.
+    /// If recipes ever outgrow the shelf this fails, which is the reminder to
+    /// choose the stacked-case sprite spec 08 leaves open.
+    @Test("The catalogue fits the shelf on every room the layout can resolve")
+    func theCatalogueFitsTheShelf() {
+        let sizes = [
+            CGSize(width: 320, height: 568),
+            CGSize(width: 393, height: 852),
+            CGSize(width: 440, height: 956),
+            CGSize(width: 1024, height: 1366),
+        ]
+        for size in sizes {
+            let plan = RoomPlan(fitting: RoomLayout(fitting: size))
+            #expect(RecipeID.allCases.count <= plan.shelfColumns.count, "\(size)")
+        }
     }
 }

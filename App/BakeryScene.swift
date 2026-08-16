@@ -95,7 +95,7 @@ final class BakeryScene: SKScene {
     private var stage: Stage?
     private var carried: SKSpriteNode?
     private var placedDeliveredTreat = false
-    private var renderedShelf: [RecipeID]?
+    private var renderedShelf: [TreatTally]?
 
     private enum Pace {
         static let walkArtPixelsPerSecond: Double = 64
@@ -174,7 +174,18 @@ final class BakeryScene: SKScene {
     var isOvenRunning: Bool { stage?.oven.action(forKey: "bake") != nil }
     var bakerPosition: CGPoint? { stage?.baker.position }
     var displayedTimer: String { stage?.timer.text ?? "" }
-    var visibleTreatCount: Int { stage?.shelf.children.count ?? 0 }
+    /// Occupied slots on the counter — one per recipe, not one per bake.
+    var visibleSlotCount: Int { stage?.shelf.children.count ?? 0 }
+    /// What the counter is showing, quantities included. The sheet's tally is
+    /// the true one (08); this is only what fits on the shelf.
+    var displayedTreats: [TreatTally] { renderedShelf ?? [] }
+    /// Where the case's sprites may land, for the overflow check.
+    var caseRegion: CGRect? { stage?.caseRegion }
+    /// Every drawn slot's extent in scene coordinates — what spec 08's "never
+    /// spills outside the case" is checked against.
+    var shelfSlotFrames: [CGRect] {
+        stage?.shelf.children.map { $0.calculateAccumulatedFrame() } ?? []
+    }
 
     // MARK: - Building the room
 
@@ -382,14 +393,7 @@ final class BakeryScene: SKScene {
         node.zPosition = depth(ofBaseY: node.position.y, in: layout)
         addChild(node)
 
-        let base = layout.tileRect(column: plan.caseColumn, row: plan.counterRow)
-        let end = layout.tileRect(column: plan.shelfColumns.upperBound, row: plan.counterRow)
-        return CGRect(
-            x: base.minX,
-            y: base.minY,
-            width: end.maxX - base.minX,
-            height: layout.tileSize * 3
-        )
+        return plan.caseRegion(in: layout)
     }
 
     private func makeBaker(_ layout: RoomLayout) -> SKSpriteNode {
@@ -476,6 +480,15 @@ final class BakeryScene: SKScene {
         }
     }
 
+    /// One slot per *recipe*, not per bake: a second cookie raises a ♦ count
+    /// rather than taking another slot (08).
+    ///
+    /// That is also what makes a visually full case unreachable — slots are
+    /// bounded by the catalogue, which is smaller than the shelf on every room
+    /// size the layout can resolve. The `prefix` is not dead code but the
+    /// guarantee behind that: should the catalogue ever outgrow the shelf,
+    /// sprites stop being added and the count in the sheet stays true, rather
+    /// than treats spilling into the room.
     private func renderShelf() {
         guard let stage else { return }
         var visible = model.treats
@@ -485,21 +498,57 @@ final class BakeryScene: SKScene {
             visible.removeLast()
         }
         let slots = Array(stage.plan.shelfColumns)
-        let shown = Array(visible.prefix(slots.count))
+        let shown = Array(TreatTally.tallied(visible).prefix(slots.count))
         guard shown != renderedShelf else { return }
         renderedShelf = shown
 
         stage.shelf.removeAllChildren()
-        for (index, recipe) in shown.enumerated() {
+        let region = stage.caseRegion
+        for (index, tally) in shown.enumerated() {
             let tile = RoomTile(column: slots[index], row: stage.plan.counterRow)
-            let treat = treatSprite(recipe, layout: stage.layout)
+            let origin = stage.layout.point(of: tile)
+            let slot = SKNode()
+            slot.zPosition = depth(ofBaseY: origin.y, in: stage.layout) + 1
+
+            let treat = treatSprite(tally.recipeID, layout: stage.layout)
             treat.position = stage.layout.snap(CGPoint(
-                x: stage.layout.point(of: tile).x,
-                y: stage.layout.point(of: tile).y + stage.layout.tileSize * 0.25
+                x: held(origin.x, width: treat.size.width, in: region),
+                y: origin.y + stage.layout.tileSize * 0.25
             ))
-            treat.zPosition = depth(ofBaseY: stage.layout.point(of: tile).y, in: stage.layout) + 1
-            stage.shelf.addChild(treat)
+            slot.addChild(treat)
+
+            // A lone treat needs no "x1" cluttering the counter; the quantity
+            // only appears once there is a quantity to report. It goes above
+            // the treat rather than on it — the counter face is under half a
+            // glyph tall, and a badge across the sprite would hide the one
+            // thing the case is there to show.
+            if tally.count > 1 {
+                let count = BitmapTextNode("♦\(tally.count)", scale: stage.layout.scale)
+                // Centred on the treat rather than on its tile: the cake is two
+                // tiles wide, and a count centred on the tile would sit over its
+                // left half looking like it belonged to the treat before it.
+                count.place(centeredOn: CGPoint(
+                    x: treat.position.x + treat.size.width / 2,
+                    y: origin.y + stage.layout.tileSize * 1.5
+                ))
+                count.position.x = stage.layout.snap(
+                    held(count.position.x, width: count.size.width, in: region)
+                )
+                count.zPosition = 1
+                slot.addChild(count)
+            }
+            stage.shelf.addChild(slot)
         }
+    }
+
+    /// Keeps a slot's contents inside the case.
+    ///
+    /// Not defensive padding: a treat may be wider than its slot — the cake is
+    /// two tiles — and a three-glyph ♦ count is wider than any of them, while
+    /// the last slot has no tile to its right. Spec 08 allows a full case to
+    /// stop drawing, and forbids it spilling into the room.
+    private func held(_ x: CGFloat, width: CGFloat, in region: CGRect) -> CGFloat {
+        min(max(x, region.minX), region.maxX - width)
     }
 
     private func treatSprite(_ recipe: RecipeID, layout: RoomLayout) -> SKSpriteNode {
