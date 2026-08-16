@@ -31,6 +31,10 @@ struct BakeryRoomView: View {
     @State private var watchedBakeWhileActive = false
     @State private var isConfirmingCancel = false
     @State private var isShowingOutcome = false
+    /// Openable at launch for the same reason the book is: a case with a day's
+    /// baking in it is a state no launch can otherwise reach, since filling it
+    /// takes a day's worth of real timers.
+    @State private var isShowingCase = ProcessInfo.processInfo.arguments.contains("-displayCase")
     /// Openable at launch so the modal can be screenshotted without tap
     /// tooling, the same way `-pixelProof` serves spec 01. `-recipeBookLocked`
     /// opens it on the first locked page instead, which is the other state
@@ -50,6 +54,9 @@ struct BakeryRoomView: View {
             // No explicit isPaused: SKView already stops rendering while the
             // app is backgrounded, which is all spec 05's lifecycle rule asks.
             SpriteView(scene: scene)
+                // Inside `ignoresSafeArea`, so the overlay is handed the same
+                // size the scene is and the two agree on where the case is.
+                .overlay { caseAccessibility }
                 .ignoresSafeArea()
             if !isShowingRecipeBook {
                 controls
@@ -99,6 +106,13 @@ struct BakeryRoomView: View {
                  ? "\(RecipeCatalog.recipe(for: session.recipeID).name), waiting in the case."
                  : "You left the bakery mid-bake.")
         }
+        .sheet(isPresented: $isShowingCase) {
+            // Read here rather than captured when the tap arrived, so a bake
+            // landing while the sheet is open shows up in it.
+            DisplayCaseSheetView(day: store.today.displayCase) {
+                isShowingCase = false
+            }
+        }
         .confirmationDialog(
             "Throw out this bake?",
             isPresented: $isConfirmingCancel,
@@ -130,6 +144,42 @@ struct BakeryRoomView: View {
         }
         .buttonStyle(.borderedProminent)
         .padding(.bottom, 20)
+    }
+
+    /// The display case as VoiceOver sees it. The room is sprites, so the case
+    /// is otherwise not merely unlabelled but absent — and the sheet it opens
+    /// is the accessible half of the feature (08, 13).
+    ///
+    /// Hit testing stays off so the scene keeps the actual tap and remains the
+    /// single path to `.caseTapped`. Spec 13 owns the room's full pass; the
+    /// baker and the oven still have nothing here.
+    private var caseAccessibility: some View {
+        GeometryReader { proxy in
+            let layout = RoomLayout(fitting: proxy.size)
+            let region = RoomPlan(fitting: layout).caseRegion(in: layout)
+            Color.clear
+                .frame(width: region.width, height: region.height)
+                // SpriteKit's y counts up from the bottom and SwiftUI's counts
+                // down from the top; this is that flip and nothing else.
+                .position(x: region.midX, y: proxy.size.height - region.midY)
+                .accessibilityElement()
+                .accessibilityLabel("Display case")
+                .accessibilityValue(caseSummary)
+                .accessibilityHint("Lists today's bakes")
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { isShowingCase = true }
+        }
+        .allowsHitTesting(false)
+    }
+
+    /// Never phrased as loss: an empty case is a bakery about to open (08, 11).
+    private var caseSummary: String {
+        let count = store.today.displayCase.totalCount
+        return switch count {
+        case 0: "Empty, ready for today"
+        case 1: "1 treat today"
+        default: "\(count) treats today"
+        }
     }
 
     /// Spec 10's modal, fed and drained here so the boundary stays the same as
@@ -205,8 +255,7 @@ struct BakeryRoomView: View {
             notifications.clearDeliveredCompletion()
             sync()
         case .caseTapped:
-            // Spec 08 presents today's bakes here.
-            break
+            isShowingCase = true
         }
     }
 
