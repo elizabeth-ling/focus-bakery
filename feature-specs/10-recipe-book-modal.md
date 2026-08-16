@@ -44,12 +44,17 @@ resolution from the pack. Expect to need a larger multiple here than the room's
 
 ## Recipe selection
 
-- Cycles through the user's **unlocked** recipes (`07`).
-- Locked recipes: whether they appear here (greyed, with price) or only in the
-  recipe book proper is an open question. Defaulting to unlocked-only keeps the
-  start-a-session flow uncluttered.
-- With only chocolate-chip cookie unlocked (fresh install), the arrows must
-  degrade gracefully rather than appearing broken — see `11`.
+- Cycles through **all** recipes (`07`), locked and unlocked, so the arrows are
+  always present — even on a fresh install with only chocolate-chip cookie
+  unlocked (`11`), the other pages are there to browse.
+- **Locked recipes** show their treat art slightly greyed out/darkened, with a
+  **gold lock symbol** covering it.
+- On a locked recipe's page, the duration number and "−"/"+" buttons are
+  **replaced by a purchase button** showing the recipe's price beside a coin
+  icon/art. Buying unlocks the recipe (`07`) and the page becomes a normal
+  startable one.
+- Starting a session is only ever possible on an unlocked recipe; the store's
+  refusal of a locked recipe (already tested) stays as the backstop.
 
 ## Duration
 
@@ -72,8 +77,13 @@ resolution from the pack. Expect to need a larger multiple here than the room's
 ## Acceptance criteria
 
 - [x] "+" opens the modal; the modal can be dismissed without starting a session.
-- [x] Arrows cycle only through unlocked recipes.
-- [x] With one unlocked recipe, the control reads as intentional, not broken.
+- [ ] Arrows cycle through **all** recipes, locked and unlocked, and are always
+      visible.
+- [ ] Locked recipes show greyed/darkened treat art under a gold lock symbol.
+- [ ] Locked recipes replace the duration and "−"/"+" controls with a purchase
+      button showing the price and a coin icon.
+- [ ] Purchasing from the modal unlocks the recipe and the page becomes
+      startable in place.
 - [x] Duration cannot be set below the minimum or above the maximum.
 - [x] Starting creates exactly one `.inProgress` session with the chosen recipe
       and duration, schedules the completion notification (`04`), and returns to
@@ -82,6 +92,12 @@ resolution from the pack. Expect to need a larger multiple here than the room's
 - [x] Text within the modal uses a single text tier.
 
 ### How they were checked
+
+> **Revised 2026-08-15:** the locked-recipe decision below was reversed — the
+> modal now cycles all recipes, with locked ones greyed under a gold lock and a
+> purchase button in place of the stepper. The unchecked criteria above are the
+> new behavior, not yet built. The record below describes the unlocked-only
+> version as it was verified.
 
 The logic is unit-tested (`RecipeBookModalTests`, `BakeDurationTests`): cycling
 wraps, never leaves the unlocked set whatever it is asked from, and stays put
@@ -137,11 +153,16 @@ section prescribes for that case.
   when a bake starts. Values are clamped on the way out, and a remembered
   recipe that is somehow not unlocked falls back to the starter.
 - ~~Whether locked recipes are visible here with their prices, or only in the
-  recipe book.~~ **Resolved: only in the book.** The spec's own default —
-  starting a session should be uncluttered, and the aspirational browsing job
-  already has a home where the shortfall can be explained and spent (`07`).
-  The modal still nods to what is missing: with one recipe unlocked the
-  caption reads as an invitation rather than leaving a bare page.
+  recipe book.~~ **Resolved: only in the book** (the spec's original default),
+  then **reversed 2026-08-15: visible here.** The modal cycles every recipe;
+  locked pages show greyed/darkened art under a gold lock, with a purchase
+  button (price + coin icon) where the duration stepper would be. Browsing and
+  buying now happen in the same place you start a bake, so the arrows never
+  disappear and the one-recipe invitation caption is superseded.
+- What the purchase button does when the user cannot afford the recipe —
+  disabled, or tappable with a shortfall explanation. Undecided.
+- Where the gold lock and coin art come from — the pack, or authored into
+  `UI.atlas` alongside the rest of the book chrome. Undecided.
 - ~~Whether recipes have suggested/native durations, which would tie the two
   controls together.~~ **Resolved: no.** The two controls stay independent;
   what ties duration to anything is the payout line — the modal writes the
