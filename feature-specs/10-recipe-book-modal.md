@@ -15,9 +15,10 @@ visible.
 > **Authored.** `tools/ui/build_ui.py` draws the book — leather cover, brass
 > corner protectors, stitched page, ribbon bookmark — and the arrow/stepper/
 > button family into `Resources/UI.atlas/`, every colour sampled from the
-> pack's palette. The atlas is committed (it is original art, not pack pixels),
-> so the app builds without Python. What remains of the art budget is settings
-> chrome (`13`) and the app icon.
+> pack's palette. The locked pages added the padlock, the coin and the brass
+> buy plate to it. The atlas is committed (it is original art, not pack
+> pixels), so the app builds without Python. What remains of the art budget is
+> settings chrome (`13`) and the app icon.
 
 ## Goal
 
@@ -77,12 +78,12 @@ resolution from the pack. Expect to need a larger multiple here than the room's
 ## Acceptance criteria
 
 - [x] "+" opens the modal; the modal can be dismissed without starting a session.
-- [ ] Arrows cycle through **all** recipes, locked and unlocked, and are always
+- [x] Arrows cycle through **all** recipes, locked and unlocked, and are always
       visible.
-- [ ] Locked recipes show greyed/darkened treat art under a gold lock symbol.
-- [ ] Locked recipes replace the duration and "−"/"+" controls with a purchase
+- [x] Locked recipes show greyed/darkened treat art under a gold lock symbol.
+- [x] Locked recipes replace the duration and "−"/"+" controls with a purchase
       button showing the price and a coin icon.
-- [ ] Purchasing from the modal unlocks the recipe and the page becomes
+- [x] Purchasing from the modal unlocks the recipe and the page becomes
       startable in place.
 - [x] Duration cannot be set below the minimum or above the maximum.
 - [x] Starting creates exactly one `.inProgress` session with the chosen recipe
@@ -95,28 +96,42 @@ resolution from the pack. Expect to need a larger multiple here than the room's
 
 > **Revised 2026-08-15:** the locked-recipe decision below was reversed — the
 > modal now cycles all recipes, with locked ones greyed under a gold lock and a
-> purchase button in place of the stepper. The unchecked criteria above are the
-> new behavior, not yet built. The record below describes the unlocked-only
-> version as it was verified.
+> purchase button in place of the stepper. Built and re-verified the same day;
+> the record below is the whole book, not the unlocked-only version.
 
 The logic is unit-tested (`RecipeBookModalTests`, `BakeDurationTests`): cycling
-wraps, never leaves the unlocked set whatever it is asked from, and stays put
-with one recipe; clamping bounds and snaps every value; starting creates
-exactly one `.inProgress` session with the chosen recipe and duration, refuses
-a second while one is in flight, and refuses a locked recipe even if the input
-layer were to send one. Scheduling and the working sprite are not re-proven
-here because the modal adds no path to them: starting is just the session
-changing, which is what `NotificationSync` (`04`) and the scene sync (`05`)
-already key off, and both have their own tests.
+wraps at both ends, walks every page of the catalogue and comes home rather
+than drifting, and never leaves the book whatever page it is asked from; a
+locked entry carries the price and the shortfall the buy button and its sheet
+read; clamping bounds and snaps every value; starting creates exactly one
+`.inProgress` session with the chosen recipe and duration, refuses a second
+while one is in flight, and refuses a locked recipe even if the input layer
+were to send one. Buying in place is proven at the store: the page the modal
+is holding is locked and unstartable, and after the purchase the same page is
+unlocked and starts. Scheduling and the working sprite are not re-proven here
+because the modal adds no path to them: starting is just the session changing,
+which is what `NotificationSync` (`04`) and the scene sync (`05`) already key
+off, and both have their own tests.
 
 The screen itself was verified by screenshot on the iPhone 16 and the iPhone
-SE (3rd gen) — the book fits both with margin — in both states: one unlocked
-recipe (no arrows, invitation caption) and three (arrows, "Page 1 of 3").
-Launching with `-bakeryRoom -recipeBook` opens the book at startup for
-exactly this purpose, since this machine still has no simulator tap tooling
-(the spec 07 gap). **Still owed the same manual pass as 07's sheets:** nobody
-has yet tapped the arrows, steppers, or start on a device — the by-hand flow
-end to end.
+SE (3rd gen) — the book fits both with margin — across every page state: an
+unlocked page (stepper, payout, start), a locked page nobody can afford yet
+("70 more to go" on a fresh install, "275 more to go" against 180 coins), and
+a locked page the balance covers ("You have 600 coins"). The greying was
+checked against a colourful treat as well as a dark one, since a chocolate
+donut hides a filter that a fruit tart shows. Both confirmation sheets were
+seen too — "Buy this recipe?" with its buy, and "Not enough coins" with the
+shortfall arithmetic right (840 − 600 = 240, 70 − 0 = 70) — by defaulting the
+confirmation state to true in a throwaway build, which is also what caught the
+sheet saying "1000" beside a page saying "1,000".
+
+`-bakeryRoom -recipeBook` opens the book at startup and `-recipeBookLocked`
+opens it on the first locked page, since this machine still has no simulator
+tap tooling (the spec 07 gap). **Still owed the same manual pass as 07's
+sheets:** nobody has yet tapped the arrows, steppers, buy or start on a device
+— every state above was reached by launching into it, so the by-hand flow end
+to end, and the page visibly flipping from price to stepper under the user's
+own finger, are unwitnessed.
 
 Single tier holds by inspection: every string in the modal is `ChromeFont`
 TTF, and the modal contains no bitmap text to clash with. The duration digits
@@ -125,9 +140,17 @@ section prescribes for that case.
 
 ## How it is built
 
-- `App/RecipeBookModalView.swift` is a pure view: the caller hands it the
-  unlocked recipes and where to open, and gets back one start or one
-  dismissal. It never touches the store.
+- `App/RecipeBookModalView.swift` is a pure view: the caller hands it the book
+  (`BakeryStore.recipeBook` — the whole catalogue, each entry priced against
+  the balance), the balance, and where to open, and gets back one start, one
+  purchase or one dismissal. It never touches the store.
+- Which is what makes a bought page startable in place: `BakeryRoomView` reads
+  the book in its body pass, so a purchase re-derives the entry the modal is
+  showing while the modal keeps its own recipe in `@State`. Nothing reopens
+  and nothing is synced.
+- The locked and unlocked bottom blocks are laid into a frame of the same
+  height, so turning to a locked page swaps stepper-and-start for buy-and-price
+  without moving the treat above them.
 - It is presented as an overlay in `BakeryRoomView` (the spec 06 shell will
   inherit this), over the dimmed room rather than in a system sheet — sheet
   chrome around a drawn book is exactly the "generic picker with a skin" this
@@ -136,8 +159,9 @@ section prescribes for that case.
 - The page art is a fixed 320×480 pt image from the authored `UI.atlas`
   (`tools/ui/`), not a 9-slice, so its hand-placed details never stretch. The
   treat is the pack sprite at ×8 — a whole factor, per `01`.
-- The `-recipeBook` launch argument opens the book at startup, joining
-  `-pixelProof` and `-bakeryRoom` as screenshot scaffolding.
+- The `-recipeBook` launch argument opens the book at startup and
+  `-recipeBookLocked` opens it on the first locked page, joining `-pixelProof`
+  and `-bakeryRoom` as screenshot scaffolding.
 
 ## Open questions
 
@@ -159,10 +183,22 @@ section prescribes for that case.
   button (price + coin icon) where the duration stepper would be. Browsing and
   buying now happen in the same place you start a bake, so the arrows never
   disappear and the one-recipe invitation caption is superseded.
-- What the purchase button does when the user cannot afford the recipe —
-  disabled, or tappable with a shortfall explanation. Undecided.
-- Where the gold lock and coin art come from — the pack, or authored into
-  `UI.atlas` alongside the rest of the book chrome. Undecided.
+- ~~What the purchase button does when the user cannot afford the recipe —
+  disabled, or tappable with a shortfall explanation.~~ **Resolved: tappable,
+  and explained.** Spec 07 had already settled the pattern for the scaffold's
+  rows — a buy is confirmed rather than done on the first tap, and an
+  unaffordable one opens that *same* sheet with the shortfall spelt out and no
+  buy button — so the modal uses it rather than inventing a second answer. The
+  page itself carries the shortfall under the button ("275 more to go"), which
+  is the number a disabled control would have withheld.
+- ~~Where the gold lock and coin art come from — the pack, or authored into
+  `UI.atlas` alongside the rest of the book chrome.~~ **Resolved: authored.**
+  The pack has neither; `4_User_Interface_Elements/` is emotes and speech
+  bubbles (`14`). `tools/ui/build_ui.py` now draws `lock_gold`, `coin` and
+  `button_buy` in the same brass as the cover's corner protectors, so the gold
+  in the book is one metal — and the buy button is the start button's plate
+  struck in that brass, which is how a locked page's action reads as gold
+  where an unlocked one's reads as leather.
 - ~~Whether recipes have suggested/native durations, which would tie the two
   controls together.~~ **Resolved: no.** The two controls stay independent;
   what ties duration to anything is the payout line — the modal writes the
