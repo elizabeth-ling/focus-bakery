@@ -3,12 +3,16 @@ import UserNotifications
 
 /// What the chrome's settings entry opens (spec 06).
 ///
-/// Spec 13 owns this screen and will grow it: whether onboarding can be
-/// replayed from here is 11's question. What is here is what already works —
-/// sound and haptics (12), the daily reminder and its time (04), what permission
-/// the app actually has, and the attribution the art and font licences require
-/// (14, `NOTICE.md`). The attribution is an obligation rather than a polish
-/// item, so it ships with the first screen that can hold it.
+/// Spec 13's list, whole and deliberately short: sound and haptics (12), the
+/// daily reminder and its time (04), what permission the app actually has, and
+/// the footer. Every toggle here is a decision the user should not have had to
+/// make, so the screen is trimmed rather than grown — replaying onboarding is
+/// the one candidate left, and it waits on there being onboarding to replay
+/// (11).
+///
+/// The attribution in the footer is a licence obligation and not a courtesy
+/// (14, `NOTICE.md`), which is why it shipped with the first version of this
+/// screen rather than waiting for this one.
 ///
 /// Every toggle writes straight through to `Settings` and asks the caller to
 /// reconcile whatever it affects, because scheduling and audio both belong to
@@ -35,7 +39,7 @@ struct SettingsSheetView: View {
                 if !authorization.deliversAlerts {
                     permissionNotice
                 }
-                attribution
+                footer
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 20)
@@ -145,40 +149,76 @@ struct SettingsSheetView: View {
                 .foregroundStyle(PixelInk.body)
                 .fixedSize(horizontal: false, vertical: true)
             if let url = URL(string: UIApplication.openSettingsURLString) {
-                Link("Open iOS Settings", destination: url)
-                    .pixelFont()
-                    .foregroundStyle(PixelInk.heading)
+                link("Open iOS Settings", to: url, ink: PixelInk.heading)
             }
         }
         .accessibilityElement(children: .contain)
+    }
+
+    /// Spec 13's standard footer: version, privacy, support, attribution.
+    ///
+    /// The privacy line is a statement rather than a link because there is
+    /// nothing to link to and nothing to disclose — the app has no networking
+    /// code at all, and every byte it keeps is the JSON in Application Support
+    /// and the preferences on this screen (02). A page saying that would be a
+    /// page saying less than the sentence does.
+    private var footer: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Focus Bakery \(Self.version)")
+                .pixelFont()
+                .foregroundStyle(PixelInk.heading)
+            note("Everything stays on this phone. No account, no network, no analytics.")
+            support
+            attribution
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain)
+    }
+
+    /// The version travels in the subject line, because the first thing any
+    /// answer needs is which build the sender is on.
+    @ViewBuilder
+    private var support: some View {
+        if let url = URL(string: "mailto:\(Self.supportAddress)?subject=Focus%20Bakery%20\(Self.version)") {
+            link("Get in touch", to: url, ink: PixelInk.heading)
+                .accessibilityLabel("Get in touch, opens mail to \(Self.supportAddress)")
+        }
     }
 
     /// Both licences, in the app, as they require (`NOTICE.md`). LimeZu's is the
     /// condition of using the pack at all (14); VileR's is ShareAlike on the
     /// font both text tiers are cut from (01).
     private var attribution: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Focus Bakery \(Self.version)")
-                .pixelFont()
-                .foregroundStyle(PixelInk.heading)
+        VStack(alignment: .leading, spacing: 14) {
             credit("Art: Modern Interiors by LimeZu", "https://limezu.itch.io")
             credit("Font: PxPlus IBM CGA by VileR, CC BY-SA 4.0", "https://int10h.org/oldschool-pc-fonts/")
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
     private func credit(_ text: String, _ address: String) -> some View {
         if let url = URL(string: address) {
-            Link(destination: url) {
-                Text(text)
-                    .pixelFont()
-                    .foregroundStyle(PixelInk.body)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            link(text, to: url, ink: PixelInk.body)
         }
     }
+
+    /// Underlined, and that is not decoration (13). The pixel tier has no tint
+    /// colour of its own — every string on this sheet is one of two inks — so
+    /// without a rule under it a link is indistinguishable from the prose beside
+    /// it, which is the colour-alone failure one step further along: a control
+    /// signalling that it is a control by nothing at all.
+    private func link(_ text: String, to url: URL, ink: Color) -> some View {
+        Link(destination: url) {
+            Text(text)
+                .pixelFont()
+                .foregroundStyle(ink)
+                .underline()
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    static let supportAddress = "elizabeth.ling@uwaterloo.ca"
 
     private static var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"

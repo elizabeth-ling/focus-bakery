@@ -86,7 +86,15 @@ private struct PixelFont: ViewModifier {
     let base: Int
 
     func body(content: Content) -> some View {
-        content.font(ChromeFont.pixel(ChromeFont.magnification(base, at: dynamicTypeSize)))
+        let scale = ChromeFont.magnification(base, at: dynamicTypeSize)
+        return content
+            .font(ChromeFont.pixel(scale))
+            // The TTF's own line height is the 8-row cell and nothing more, so
+            // wrapped chrome text sets solid — one line's descenders land in the
+            // next line's ascenders. The leading comes from the same metrics the
+            // in-scene tier uses, magnified the same way, so both tiers set at
+            // the same rhythm as well as the same size (01).
+            .lineSpacing(CGFloat(BitmapFont.scene.leading * scale))
     }
 }
 
