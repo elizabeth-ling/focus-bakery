@@ -101,10 +101,11 @@ struct RecipeBookModalView: View {
                 }
                 title
                     .padding(.top, 8)
+                // Two spacers rather than one, so the slack falls either side
+                // of the treat and it sits between the name and the controls
+                // instead of riding up under the title.
+                Spacer(minLength: 14)
                 recipeRow
-                    .padding(.top, 14)
-                caption
-                    .padding(.top, 10)
                 Spacer(minLength: 8)
                 controls
             }
@@ -163,18 +164,6 @@ struct RecipeBookModalView: View {
         .accessibilityLabel(label)
     }
 
-    private var caption: some View {
-        Text(pageNumber)
-            .font(ChromeFont.pixel())
-            .foregroundStyle(BookInk.faded)
-            .frame(height: 20)
-    }
-
-    private var pageNumber: String {
-        guard let index = entries.firstIndex(where: { $0.id == recipeID }) else { return "" }
-        return "Page \(index + 1) of \(entries.count)"
-    }
-
     /// The bottom of the page: the stepper and the start on a recipe you own,
     /// the price and the buy on one you do not. Both variants sit in a block of
     /// the same height, so turning to a locked page swaps the controls without
@@ -183,8 +172,6 @@ struct RecipeBookModalView: View {
         VStack(spacing: 0) {
             if entry.isUnlocked {
                 durationRow
-                payout
-                    .padding(.top, 8)
                 startButton
                     .padding(.top, 16)
             } else {
@@ -193,7 +180,7 @@ struct RecipeBookModalView: View {
                     .padding(.top, 8)
             }
         }
-        .frame(height: 136, alignment: .top)
+        .frame(height: 108, alignment: .top)
     }
 
     private var durationRow: some View {
@@ -225,15 +212,6 @@ struct RecipeBookModalView: View {
         .disabled(target == minutes)
         .opacity(target == minutes ? 0.35 : 1)
         .accessibilityLabel(label)
-    }
-
-    /// Duration drives coins (spec 07's banded curve), and the band arithmetic
-    /// is not something to make the user infer — the payout for the current
-    /// choice is simply written on the page.
-    private var payout: some View {
-        Text("earns \(Economy.coins(forCompletedMinutes: minutes)) coins")
-            .font(ChromeFont.pixel())
-            .foregroundStyle(BookInk.body)
     }
 
     private var startButton: some View {

@@ -63,7 +63,10 @@ resolution from the pack. Expect to need a larger multiple here than the room's
 - Constrain min and max **here**, at the input layer. The timer (`03`) should
   never receive an absurd duration.
 - Duration drives coins earned (`07`), so the relationship should be legible to
-  the user, at least implicitly.
+  the user, at least implicitly. **Currently unmet:** the page carried an
+  "earns N coins" line for exactly this, and it was removed on 2026-08-15 at
+  the owner's request. Nothing in the app now explains the banded curve — see
+  the open question below.
 - Remembering the last-used duration is likely the right default. Not decided.
 
 ## Text
@@ -115,7 +118,7 @@ off, and both have their own tests.
 
 The screen itself was verified by screenshot on the iPhone 16 and the iPhone
 SE (3rd gen) — the book fits both with margin — across every page state: an
-unlocked page (stepper, payout, start), a locked page nobody can afford yet
+unlocked page (stepper and start), a locked page nobody can afford yet
 ("70 more to go" on a fresh install, "275 more to go" against 180 coins), and
 a locked page the balance covers ("You have 600 coins"). The greying was
 checked against a colourful treat as well as a dark one, since a chocolate
@@ -132,6 +135,12 @@ sheets:** nobody has yet tapped the arrows, steppers, buy or start on a device
 — every state above was reached by launching into it, so the by-hand flow end
 to end, and the page visibly flipping from price to stepper under the user's
 own finger, are unwitnessed.
+
+The payout line and the page count came off the page later the same day, and
+both variants were re-shot on both devices after: the slack they left is split
+either side of the treat rather than pooling under it, so the page is name,
+treat, controls, and the treat still holds its position between a locked page
+and an unlocked one.
 
 Single tier holds by inspection: every string in the modal is `ChromeFont`
 TTF, and the modal contains no bitmap text to clash with. The duration digits
@@ -200,7 +209,17 @@ section prescribes for that case.
   struck in that brass, which is how a locked page's action reads as gold
   where an unlocked one's reads as leather.
 - ~~Whether recipes have suggested/native durations, which would tie the two
-  controls together.~~ **Resolved: no.** The two controls stay independent;
-  what ties duration to anything is the payout line — the modal writes the
-  coins the chosen duration earns on the page, which is the legibility debt
-  the banded curve left with this spec (`07`).
+  controls together.~~ **Resolved: no.** The two controls stay independent.
+- **Where the banded earn curve gets explained, now that the page does not.**
+  The modal used to write the payout for the selected duration ("earns 35
+  coins") and the page position ("Page 1 of 6") on the paper; both were removed
+  on 2026-08-15 at the owner's request, leaving the page as name, treat,
+  stepper, start. The page reads cleaner for it, and the arrows now have no
+  count beside them — which costs nothing, since the arrows are always there
+  and wrap. The payout is the real loss: spec 07 resolved its own legibility
+  question by handing the job to this modal ("`10` carries it"), and this modal
+  no longer does. Either 07 takes the debt back, some other surface picks it up
+  (the completion alert already names the recipe and could name the coins), or
+  the product accepts that "25 minutes → 35 coins" is something the user infers
+  from watching the balance. Undecided, and 07's resolved question is stale
+  until it is.
