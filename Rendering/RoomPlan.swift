@@ -113,6 +113,33 @@ struct RoomPlan: Equatable {
 }
 
 extension RoomPlan {
+    /// The oven's extent in scene coordinates: its two columns, drawn three
+    /// tiles tall so its body covers the wall band above.
+    ///
+    /// Spec 06's chrome must not cover it — it is the room's primary "something
+    /// is baking" signal (05) and it sits exactly where a top bar wants to be.
+    func ovenRegion(in layout: RoomLayout) -> CGRect {
+        let base = layout.tileRect(column: ovenColumns.lowerBound, row: ovenRow)
+        return CGRect(
+            x: base.minX,
+            y: base.minY,
+            width: layout.tileSize * CGFloat(ovenColumns.count),
+            height: layout.tileSize * 3
+        )
+    }
+
+    /// Where the baker stands to work, sprite included: one tile of floor with
+    /// two tiles of baker on it.
+    func stationRegion(in layout: RoomLayout) -> CGRect {
+        let base = layout.tileRect(column: stationTile.column, row: stationTile.row)
+        return CGRect(
+            x: base.minX,
+            y: base.minY,
+            width: layout.tileSize,
+            height: layout.tileSize * 2
+        )
+    }
+
     /// The display case's extent in scene coordinates: the counter line it
     /// stands at the end of, three tiles tall.
     ///
