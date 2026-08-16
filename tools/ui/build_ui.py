@@ -149,6 +149,49 @@ def build_icon(name, glyph):
     return name, canvas
 
 
+# The padlock that covers a locked recipe's treat, and the coin its price is
+# quoted in (spec 10). Both are brass -- the same G/g/o the corner protectors
+# use -- so the gold in the book is one metal. The pack has no lock or coin of
+# its own, which is what settles where they come from.
+LOCK_ROWS = [
+    ".....KKKKKK.....",
+    "....KGgoogGK....",
+    "...KGgK..KgGK...",
+    "...KGgK..KgGK...",
+    "...KGgK..KgGK...",
+    "...KGgK..KgGK...",
+    "...KGgK..KgGK...",
+    "..KKKKKKKKKKKK..",
+    ".KGGGGGGGGGGgoK.",
+    ".KGggggggggggoK.",
+    ".KGgggKKKKgggoK.",
+    ".KGgggKKKKgggoK.",
+    ".KGggggKKggggoK.",
+    ".KooooooooooooK.",
+    "..KKKKKKKKKKKK..",
+    "................",
+]
+
+COIN_ROWS = [
+    "...KKKK...",
+    "..KGGGGK..",
+    ".KGGGGggK.",
+    "KGGGgggggK",
+    "KGGgggggoK",
+    "KGggggggoK",
+    "KGgggggooK",
+    ".KggggooK.",
+    "..KgoooK..",
+    "...KKKK...",
+]
+
+
+def build_stamped(name, rows):
+    canvas = Canvas(len(rows[0]), len(rows))
+    canvas.stamp(0, 0, rows)
+    return name, canvas
+
+
 def build_start_button():
     canvas = Canvas(112, 24)
     rounded_panel(canvas, 0, 0, 111, 23, 2, "K", "l")
@@ -160,6 +203,21 @@ def build_start_button():
     canvas.put(109, 21, "D")
     canvas.hline(2, 109, 21, "D")
     return "button_start", canvas
+
+
+def build_buy_button():
+    """The same plate as the start button, struck in brass: on a locked page the
+    action is a purchase, and gold is what the lock and the coin are made of."""
+    canvas = Canvas(112, 24)
+    rounded_panel(canvas, 0, 0, 111, 23, 2, "K", "g")
+    canvas.hline(3, 108, 1, "G")
+    canvas.put(2, 2, "G")
+    canvas.put(109, 2, "G")
+    canvas.hline(3, 108, 22, "o")
+    canvas.put(2, 21, "o")
+    canvas.put(109, 21, "o")
+    canvas.hline(2, 109, 21, "o")
+    return "button_buy", canvas
 
 
 def brass_corner(canvas, cx, cy, dx, dy):
@@ -249,6 +307,9 @@ def build_all():
         build_icon("stepper_plus", glyph_plus),
         build_icon("button_close", glyph_cross),
         build_start_button(),
+        build_buy_button(),
+        build_stamped("lock_gold", LOCK_ROWS),
+        build_stamped("coin", COIN_ROWS),
     ]
     return assets
 
