@@ -60,7 +60,9 @@ This is the sharp edge. If a session is `.inProgress` across midnight:
 
 - Filling the case is a payoff moment: the baker carries the treat over and
   places it (`05`), with sound and haptic (`12`). Do not shortcut this into the
-  treat appearing instantly.
+  treat appearing instantly. The walk and the placement are built; the sound and
+  the haptic are not, and wait on `12` — the scene already raises `treatPlaced`
+  at the exact frame they belong on, so they are a handler, not a rebuild.
 - Empty state (a fresh morning, an empty case) is a place cozy apps prove they're
   crafted — see `11`. It should read as *a bakery ready to open*, not as absence.
   An empty glass case in a lit room does this well on its own.
@@ -77,24 +79,72 @@ must not happen is treats overflowing into the room or silently vanishing with n
 record. The sheet always shows the true count regardless of what the case
 displays.
 
+> **Settled.** A slot is spent per *recipe*, not per bake, so the shelf needs
+> only as many slots as the catalogue has entries — six — against the eight it
+> has on the smallest room `RoomLayout` will resolve and ten on an iPhone 16. A
+> visually full case is therefore unreachable, and neither branch above had to
+> be chosen. `BakerySceneTests` asserts the catalogue still fits the shelf on
+> every room size; should recipes ever outgrow it, the shelf stops adding
+> sprites while the sheet goes on counting.
+
 ## Acceptance criteria
 
-- [ ] Completing a session adds exactly one treat of the right recipe, visible in
+- [x] Completing a session adds exactly one treat of the right recipe, visible in
       the case at the end of the deliver walk.
-- [ ] Repeated bakes of one recipe display as a quantity, not duplicate entries.
-- [ ] Tapping the case in the room opens today's bakes; the sheet count always
+- [x] Repeated bakes of one recipe display as a quantity, not duplicate entries.
+- [x] Tapping the case in the room opens today's bakes; the sheet count always
       matches the true tally, even when the case is visually full.
-- [ ] Exceeding visible slot capacity neither drops a treat from the record nor
+- [x] Exceeding visible slot capacity neither drops a treat from the record nor
       spills sprites outside the case.
-- [ ] Crossing midnight with no session: case is empty on next foreground, recipe
+- [x] Crossing midnight with no session: case is empty on next foreground, recipe
       book intact, coins intact, streak intact.
-- [ ] Crossing midnight **with** a session in progress: session survives, case
+- [x] Crossing midnight **with** a session in progress: session survives, case
       resets, and the treat lands in the new day on completion.
-- [ ] Changing timezone across a day boundary resolves to one reset, not zero and
+- [x] Changing timezone across a day boundary resolves to one reset, not zero and
       not two.
-- [ ] Backgrounding and foregrounding repeatedly within one day never resets the
+- [x] Backgrounding and foregrounding repeatedly within one day never resets the
       case.
-- [ ] Display case data being unreadable never takes the recipe book with it.
+- [x] Display case data being unreadable never takes the recipe book with it.
+
+### How they were checked
+
+The reset half was built and proven with spec 02's persistence work and is
+unchanged here: `BakeryStoreTests` covers the rollover clearing the case while
+the recipe book, wallet and streak sit in another file and another slice, a
+reset never clobbering an in-flight bake, a bake crossing midnight filing its
+treat under the day it *finished* in, and repeated foregrounding within one day
+never resetting anything; `TimeZoneRolloverTests` covers flying east rolling
+the day exactly once and flying west not clearing a case still being filled;
+`FailSoftPersistenceTests` covers unreadable display-case data costing the day
+and nothing else. Rollover lives in one place — `BakeryStore.rollOverIfNeeded`
+— which is what stops two call sites disagreeing at a DST boundary, and
+`finishActiveSession` settles the day *before* crediting, which is the
+mid-deliver-walk interleaving the gotchas warn about.
+
+The case itself is unit-tested (`DisplayCaseTests`, `BakerySceneTests`):
+quantities accumulate in first-baked order so the counter does not reshuffle as
+counts climb, the tally the room draws is derived by the same
+`TreatTally.tallied` the sheet lists, a forty-bake day keeps all forty in the
+record while the shelf shows six, and the tap region clears spec 13's 44pt
+floor on every room size. The overflow criterion is checked as geometry rather
+than by eye: every drawn slot's accumulated frame must sit inside the case
+region on three screen sizes.
+
+Verified by screenshot on the iPhone 16, seeding a twelve-bake day into
+`today.json` in the simulator's container: the room shows six treats on the
+counter with ♦4, ♦3 and ♦2 over the repeats, nothing outside the case, and the
+sheet lists all six recipes with matching counts under a header reading "12
+treats today" — the true tally, above the fold, while the room shows six. The
+empty case was shot too, and reads as a bakery about to open rather than as
+anything lost.
+
+**Still owed a manual pass, the same debt specs 07 and 10 carry:** nobody has
+tapped the case on a device. `-bakeryRoom -displayCase` opens the sheet at
+launch, which is how it was shot, so the `.caseTapped` path from an actual
+finger is unwitnessed — as is the deliver walk placing a treat that raises a ♦
+count from 1 to 2, which needs a real timer to reach. The case's VoiceOver
+element was written against spec 13's requirement but has not been driven with
+VoiceOver running.
 
 ## Gotchas
 
@@ -109,12 +159,22 @@ displays.
 
 ## Open questions
 
-- How many visible slots the case has, and what a visually full case does (see
-  above). Gated on room dimensions (`05`).
-- Whether the case is one wide unit or several smaller ones — the pack supports
-  both, and several would let recipes group by type.
-- Whether the animated cake-fridge variants (`14`) are used, or a static case
-  with treat sprites layered on. Static is simpler to fill incrementally;
-  animated is more alive.
-- Is yesterday's case viewable anywhere? v1 has no history screen (deferred), so
-  the default answer is no.
+- ~~How many visible slots the case has, and what a visually full case does.~~
+  **Settled:** the counter line is the shelf, so the slot count is
+  `RoomPlan.shelfColumns` — eight on the smallest room the layout resolves, ten
+  on an iPhone 16. Per-recipe slots put that permanently ahead of the
+  catalogue, so a full case is unreachable and neither fallback was needed (see
+  above).
+- ~~Whether the case is one wide unit or several smaller ones.~~ **Settled by
+  `05`:** one case fixture at the left end of a continuous counter line, with
+  the counter acting as the shelf beside it. Grouping recipes by type would
+  need several units and a rule for which treat goes where; quantities made the
+  grouping unnecessary, since each recipe already has exactly one place to be.
+- ~~Whether the animated cake-fridge variants (`14`) are used.~~ **Settled:**
+  static case, treat sprites layered on the counter. Incremental filling is the
+  whole payoff — the baker carries a treat over and it appears where he puts it
+  — and an animated fixture that fills with cake on its own schedule fights
+  that rather than helping it.
+- Is yesterday's case viewable anywhere? **No**, unchanged: v1 has no history
+  screen. The reset is the feature, and a way to go look at yesterday would
+  quietly argue the opposite.
