@@ -7,7 +7,14 @@ import SwiftUI
 /// A pure view: the caller passes the book and where to open, and receives one
 /// start, one purchase, or the dismissal. Every string in it is the chrome TTF —
 /// the modal is SwiftUI chrome, so that is its single text tier (spec 01).
+///
+/// The one thing it reaches for is the feedback player (12), because paging and
+/// stepping are felt here and nowhere else. It still decides nothing: a cue is a
+/// noise, not state, and threading two closures out for it would be plumbing
+/// with no reader.
 struct RecipeBookModalView: View {
+    @Environment(BakeryFeedback.self) private var feedback
+
     let entries: [RecipeBookEntry]
     let coinBalance: Int
     let onStart: (RecipeID, Int) -> Void
@@ -155,6 +162,7 @@ struct RecipeBookModalView: View {
     private func pageArrow(_ name: String, by delta: Int, label: String) -> some View {
         Button {
             recipeID = Self.cycled(from: recipeID, by: delta, in: entries)
+            feedback.play(.step)
         } label: {
             PixelImage(name: name, atlas: .ui)
                 .frame(width: 44, height: 44)
@@ -198,6 +206,7 @@ struct RecipeBookModalView: View {
         let target = BakeDuration.clamped(minutes + delta)
         return Button {
             minutes = target
+            feedback.play(.step)
         } label: {
             PixelImage(name: name, atlas: .ui)
                 .frame(width: 44, height: 44)

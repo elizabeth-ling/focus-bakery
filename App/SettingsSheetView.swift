@@ -3,21 +3,24 @@ import UserNotifications
 
 /// What the chrome's settings entry opens (spec 06).
 ///
-/// Spec 13 owns this screen and will grow it: sound and haptics arrive with 12,
-/// and whether onboarding can be replayed from here is 11's question. What is
-/// here is what already works — the daily reminder and its time (04), what
-/// permission the app actually has, and the attribution the art and font
-/// licences require (14, `NOTICE.md`). The attribution is an obligation rather
-/// than a polish item, so it ships with the first screen that can hold it.
+/// Spec 13 owns this screen and will grow it: whether onboarding can be
+/// replayed from here is 11's question. What is here is what already works —
+/// sound and haptics (12), the daily reminder and its time (04), what permission
+/// the app actually has, and the attribution the art and font licences require
+/// (14, `NOTICE.md`). The attribution is an obligation rather than a polish
+/// item, so it ships with the first screen that can hold it.
 ///
-/// The reminder writes straight through to `Settings` and asks the caller to
-/// reconcile, because scheduling belongs to the app layer and never to a view
-/// (04, 06).
+/// Every toggle writes straight through to `Settings` and asks the caller to
+/// reconcile whatever it affects, because scheduling and audio both belong to
+/// the app layer and never to a view (04, 06, 12).
 struct SettingsSheetView: View {
     let authorization: UNAuthorizationStatus
+    let onSoundChanged: () -> Void
     let onReminderChanged: () -> Void
     let onDismiss: () -> Void
 
+    @State private var isSoundOn = true
+    @State private var isHapticsOn = true
     @State private var isReminderOn = false
     @State private var reminderTime = Date()
 
@@ -27,6 +30,7 @@ struct SettingsSheetView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 header
+                feedback
                 reminder
                 if !authorization.deliversAlerts {
                     permissionNotice
@@ -40,8 +44,20 @@ struct SettingsSheetView: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .task {
+            isSoundOn = settings.soundEnabled
+            isHapticsOn = settings.hapticsEnabled
             isReminderOn = settings.dailyReminderEnabled
             reminderTime = Self.date(from: settings.dailyReminderTime)
+        }
+        .onChange(of: isSoundOn) { _, isOn in
+            settings.soundEnabled = isOn
+            // The hum is already running and has to stop, or start, now (12).
+            onSoundChanged()
+        }
+        .onChange(of: isHapticsOn) { _, isOn in
+            // Nothing to reconcile: every cue reads this as it plays, so the
+            // next one obeys it and there is no running state to correct.
+            settings.hapticsEnabled = isOn
         }
         .onChange(of: isReminderOn) { _, isOn in
             settings.dailyReminderEnabled = isOn
@@ -67,14 +83,22 @@ struct SettingsSheetView: View {
         }
     }
 
+    /// Spec 12's two switches. Both default to on, and with both off the app is
+    /// still whole: nothing in it is announced by sound or by feel alone (13).
+    private var feedback: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            toggle("Sound", isOn: $isSoundOn)
+            toggle("Haptics", isOn: $isHapticsOn)
+            // Worth saying out loud rather than leaving to be discovered: this
+            // is a focus app, and the fear it has to answer is that starting a
+            // bake will stop the music you started it for.
+            note("The bakery mixes under whatever you're listening to, and goes quiet with your silent switch.")
+        }
+    }
+
     private var reminder: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Toggle(isOn: $isReminderOn) {
-                Text("Daily reminder")
-                    .font(ChromeFont.pixel())
-                    .foregroundStyle(PixelInk.heading)
-            }
-            .tint(PixelInk.body)
+            toggle("Daily reminder", isOn: $isReminderOn)
 
             if isReminderOn {
                 DatePicker(
@@ -87,11 +111,24 @@ struct SettingsSheetView: View {
                 }
             }
 
-            Text("A nudge each morning, only on a day you haven't shown up yet.")
-                .font(ChromeFont.pixel())
-                .foregroundStyle(PixelInk.body)
-                .fixedSize(horizontal: false, vertical: true)
+            note("A nudge each morning, only on a day you haven't shown up yet.")
         }
+    }
+
+    private func toggle(_ title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            Text(title)
+                .font(ChromeFont.pixel())
+                .foregroundStyle(PixelInk.heading)
+        }
+        .tint(PixelInk.body)
+    }
+
+    private func note(_ text: String) -> some View {
+        Text(text)
+            .font(ChromeFont.pixel())
+            .foregroundStyle(PixelInk.body)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     /// Stated plainly, once, where the user came looking — not as a banner over

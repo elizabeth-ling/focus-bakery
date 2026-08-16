@@ -40,6 +40,7 @@ enum MainScreenAction: Equatable {
 struct MainScreenView: View {
     @Environment(BakeryStore.self) private var store
     @Environment(BakeryNotifications.self) private var notifications
+    @Environment(BakeryFeedback.self) private var feedback
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -142,6 +143,11 @@ struct MainScreenView: View {
         .onChange(of: reduceMotion) { _, _ in sync() }
         .onChange(of: outcome?.id, initial: true) { _, id in
             isShowingOutcome = id != nil && !deliverOwed
+            // A bake resolved while the app was away still gets its moment
+            // (12): this alert *is* the moment, since there is no walk to land
+            // on, so the sound goes with it rather than being skipped as
+            // something the user missed.
+            if isShowingOutcome, let outcome { feedback.announce(outcome) }
         }
         .alert(
             outcome?.outcome == .completed ? "Your bake is ready" : "Your bake burned",
@@ -183,8 +189,10 @@ struct MainScreenView: View {
         .sheet(isPresented: $isShowingSettings) {
             SettingsSheetView(
                 authorization: notifications.authorization,
-                // Scheduling belongs to the app layer, so the sheet changes the
-                // preference and this puts the pending list back in line (04).
+                // Both of these are the same shape: the sheet changes the
+                // preference, and the app layer puts what is already running
+                // back in line with it — the pending alerts (04), the hum (12).
+                onSoundChanged: { feedback.settingsChanged() },
                 onReminderChanged: { notifications.reconcile(with: store) },
                 onDismiss: { isShowingSettings = false }
             )
@@ -195,7 +203,11 @@ struct MainScreenView: View {
             titleVisibility: .visible
         ) {
             Button("Burn it", role: .destructive) {
-                store.finishActiveSession(as: .burned)
+                // A deliberate burn reaches no alert — the user just confirmed
+                // it — so this is the only place it can be felt (12).
+                if let burned = store.finishActiveSession(as: .burned) {
+                    feedback.announce(burned)
+                }
             }
             Button("Keep baking", role: .cancel) {}
         } message: {
@@ -278,7 +290,9 @@ struct MainScreenView: View {
                 isShowingRecipeBook = false
                 start(recipeID: recipeID, minutes: minutes)
             },
-            onPurchase: { store.purchase($0) },
+            onPurchase: { recipeID in
+                if store.purchase(recipeID) == .bought { feedback.play(.purchase) }
+            },
             onDismiss: { isShowingRecipeBook = false }
         )
     }
@@ -324,7 +338,11 @@ struct MainScreenView: View {
     private func handle(_ event: BakeryScene.Event) {
         switch event {
         case .treatPlaced:
-            break
+            // The end of the walk, not the timer reaching zero. Spec 12 is
+            // explicit that the ding lands with the treat: firing it three
+            // seconds earlier, while the baker is still carrying it, is the
+            // mismatch that reads as broken.
+            if let outcome = store.pendingOutcome { feedback.announce(outcome) }
         case .deliveryFinished:
             // The walk was the celebration, so the outcome is spent: no alert,
             // and the banner it may have arrived as has nothing left to say.

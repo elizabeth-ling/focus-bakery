@@ -4,6 +4,7 @@ import SwiftUI
 struct FocusBakeryApp: App {
     @State private var store = BakeryStore()
     @State private var notifications = BakeryNotifications(center: .system)
+    @State private var feedback = BakeryFeedback(client: .system)
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -16,6 +17,7 @@ struct FocusBakeryApp: App {
                 .modifier(NotificationSync(store: store, notifications: notifications))
                 .environment(store)
                 .environment(notifications)
+                .environment(feedback)
                 .task { openBakery() }
         }
         .onChange(of: scenePhase) { _, phase in
@@ -24,6 +26,10 @@ struct FocusBakeryApp: App {
                 openBakery()
             case .background:
                 store.noteLeftForeground()
+                // The app must not be audible from somewhere the user is not
+                // looking (12). Same event as the burn, and the same reading
+                // of it: `.inactive` is not a departure.
+                feedback.leaveForeground()
                 // Reconciled here rather than left to the view update: a
                 // departure that dooms the bake has to take its "ready" alert
                 // with it before the process is suspended, and a SwiftUI pass
@@ -45,6 +51,10 @@ struct FocusBakeryApp: App {
         // A bake may have finished — or burned — while the app was suspended.
         store.noteReturnedToForeground()
         store.markBakeryOpened()
+        // The hum comes back with the room. It fades in over more than a
+        // second, which is what keeps it from landing on top of the completion
+        // ding a return like this one may also owe (12).
+        feedback.enterForeground()
         // Not only for the session: the reminder window is refilled on every
         // return, and today has just been marked as one the user showed up for.
         notifications.reconcile(with: store)
