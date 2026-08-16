@@ -272,7 +272,7 @@ to confirm along with Dynamic Type.
   what "constrained by not covering the room" gets you: the only genuinely empty
   band over the room is the wall line the oven does not occupy, and the readouts
   had to fit in it. Now as **a tray that takes the top of the screen**, with the
-  room laid out below it — coins then streak at its leading end, settings at its
+  room laid out below it — settings at its leading end, coins then streak at its
   trailing end, and the one control still near the bottom, centred over
   front-of-house floor above the door. Removing the constraint rather than
   satisfying it is the better answer: chrome that is never over the room cannot

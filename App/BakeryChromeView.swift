@@ -55,12 +55,12 @@ struct BakeryChromeView: View {
 
     var body: some View {
         HStack(spacing: 20) {
+            settingsButton
+            Spacer(minLength: 12)
             readout("coin", value: "\(coins)")
                 .accessibilityLabel("Coins")
                 .accessibilityValue("\(coins)")
             streakReadout
-            Spacer(minLength: 12)
-            settingsButton
         }
     }
 
