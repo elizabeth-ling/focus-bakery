@@ -23,7 +23,7 @@ struct DisplayCaseSheetView: View {
                 filled
             }
         }
-        .background(Ink.paper)
+        .background(PixelInk.paper)
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }
@@ -36,19 +36,19 @@ struct DisplayCaseSheetView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("Today's Bakes")
                     .font(ChromeFont.pixel())
-                    .foregroundStyle(Ink.heading)
+                    .foregroundStyle(PixelInk.heading)
                     .lineLimit(1)
                 Spacer(minLength: 12)
                 Button("Done", action: onDismiss)
                     .font(ChromeFont.pixel())
-                    .foregroundStyle(Ink.heading)
+                    .foregroundStyle(PixelInk.heading)
             }
             .accessibilityAddTraits(.isHeader)
 
             if !day.isEmpty {
                 Text(day.totalCount == 1 ? "1 treat today" : "\(day.totalCount) treats today")
                     .font(ChromeFont.pixel())
-                    .foregroundStyle(Ink.body)
+                    .foregroundStyle(PixelInk.body)
             }
         }
         .padding(.horizontal, 20)
@@ -78,12 +78,12 @@ struct DisplayCaseSheetView: View {
                 .frame(width: 64)
             Text(recipe.name)
                 .font(ChromeFont.pixel())
-                .foregroundStyle(Ink.heading)
+                .foregroundStyle(PixelInk.heading)
                 .multilineTextAlignment(.leading)
             Spacer(minLength: 8)
             Text("x\(tally.count)")
                 .font(ChromeFont.pixel())
-                .foregroundStyle(Ink.body)
+                .foregroundStyle(PixelInk.body)
         }
         .padding(.vertical, 14)
         // One element per treat rather than four fragments to swipe through,
@@ -101,10 +101,10 @@ struct DisplayCaseSheetView: View {
             Spacer(minLength: 20)
             Text("The case is clean and the oven is warm.")
                 .font(ChromeFont.pixel())
-                .foregroundStyle(Ink.heading)
+                .foregroundStyle(PixelInk.heading)
             Text("Today's bakes will fill it up.")
                 .font(ChromeFont.pixel())
-                .foregroundStyle(Ink.body)
+                .foregroundStyle(PixelInk.body)
             Spacer(minLength: 20)
         }
         .multilineTextAlignment(.center)
@@ -112,13 +112,4 @@ struct DisplayCaseSheetView: View {
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
     }
-}
-
-/// Warm paper and ink, so a sheet with no authored art still reads as the same
-/// bakery as the room behind it. Deliberately few colours: spec 13 asks chrome
-/// to look like it belongs, not for a design system on an isolated screen.
-private enum Ink {
-    static let paper = Color(red: 0xF4 / 255, green: 0xE9 / 255, blue: 0xD8 / 255)
-    static let heading = Color(red: 0x38 / 255, green: 0x1A / 255, blue: 0x08 / 255)
-    static let body = Color(red: 0x66 / 255, green: 0x45 / 255, blue: 0x1E / 255)
 }

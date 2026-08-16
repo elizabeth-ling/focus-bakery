@@ -119,7 +119,7 @@ struct RecipeBookModalView: View {
     private var title: some View {
         Text(entry.recipe.name)
             .font(ChromeFont.pixel())
-            .foregroundStyle(BookInk.heading)
+            .foregroundStyle(PixelInk.heading)
             .multilineTextAlignment(.center)
             // Two lines are reserved whether or not the name needs them, so
             // paging between short and long names never reflows the page.
@@ -188,7 +188,7 @@ struct RecipeBookModalView: View {
             stepperButton("stepper_minus", by: -BakeDuration.stepMinutes, label: "Shorter bake")
             Text("\(minutes) min")
                 .font(ChromeFont.pixel(3))
-                .foregroundStyle(BookInk.heading)
+                .foregroundStyle(PixelInk.heading)
                 .frame(width: 168)
             stepperButton("stepper_plus", by: BakeDuration.stepMinutes, label: "Longer bake")
         }
@@ -222,7 +222,7 @@ struct RecipeBookModalView: View {
                 PixelImage(name: "button_start", atlas: .ui)
                 Text("Start baking")
                     .font(ChromeFont.pixel())
-                    .foregroundStyle(BookInk.cream)
+                    .foregroundStyle(PixelInk.cream)
             }
         }
         .buttonStyle(PressedPixelButtonStyle())
@@ -242,7 +242,7 @@ struct RecipeBookModalView: View {
                     Text("\(entry.recipe.price)")
                 }
                 .font(ChromeFont.pixel())
-                .foregroundStyle(BookInk.heading)
+                .foregroundStyle(PixelInk.heading)
             }
         }
         .buttonStyle(PressedPixelButtonStyle())
@@ -254,7 +254,7 @@ struct RecipeBookModalView: View {
              ? "You have \(coinBalance) coins"
              : "\(entry.coinsShort) more to go")
             .font(ChromeFont.pixel())
-            .foregroundStyle(BookInk.body)
+            .foregroundStyle(PixelInk.body)
     }
 
     /// Numbers are formatted rather than interpolated raw: the page's own
@@ -279,15 +279,6 @@ struct RecipeBookModalView: View {
         .buttonStyle(PressedPixelButtonStyle())
         .accessibilityLabel("Close")
     }
-}
-
-/// Ink colours matching the authored page art (tools/ui/build_ui.py), so the
-/// TTF text sits on the paper as if written there.
-private enum BookInk {
-    static let heading = Color(red: 0x38 / 255, green: 0x1A / 255, blue: 0x08 / 255)
-    static let body = Color(red: 0x66 / 255, green: 0x45 / 255, blue: 0x1E / 255)
-    static let faded = Color(red: 0xB9 / 255, green: 0x9E / 255, blue: 0x86 / 255)
-    static let cream = Color(red: 0xF0 / 255, green: 0xEF / 255, blue: 0xDE / 255)
 }
 
 /// Presses darken the art in place. No motion: a scaling pixel sprite would
