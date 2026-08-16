@@ -101,7 +101,9 @@ case, not replay the deliver walk from the beginning at the wrong moment (`06`).
 - The room: floor, walls, oven, prep counter, display cases, seating (`14`).
 - The baker sprite, pre-composited to a single atlas (`14`).
 - **In-scene bitmap text** rendered through the sprite pipeline (`01`): timer
-  digits, coin count, "baking…" tag. Never `SKLabelNode` for these.
+  digits, ♦ quantities, "baking…" tag. Never `SKLabelNode` for these. (The coin
+  count was in here too until `06` moved the balance to chrome, where it can sit
+  inside the safe area and be read aloud.)
 - Ambient animated fixtures are available in the pack and cheap to add, but each
   one is a moving thing competing for attention during a focus session. Add
   deliberately, not because they're free.
@@ -170,10 +172,11 @@ without art in the way.
       The digits are magnified ×2 over the room scale (as `01`'s proof surface
       was) — an integer multiple, so pixels stay uniform within the text; `06`
       owns whether the final chrome keeps that size.
-- [ ] The room lays out correctly on the smallest and largest supported devices
+- [x] The room lays out correctly on the smallest and largest supported devices
       with no fractional scaling. The plan's anchors and routes are asserted
-      for every supported size, but only the iPhone 16 room has been looked at;
-      the SE and Pro Max screenshots are owed with `06`'s real shell.
+      for every supported size, and the SE and 16 Pro Max rooms were shot with
+      `06`'s shell: both zones on screen, margin at the room edges, ×2
+      everywhere.
 - [ ] Reduced-motion is honored (`13`) without breaking state transitions —
       including the deliver walk, which repositions instead of walking and
       still delivers the treat. The state machine under reduce-motion is
