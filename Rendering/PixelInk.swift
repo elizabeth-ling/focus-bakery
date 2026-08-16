@@ -18,4 +18,8 @@ enum PixelInk {
     /// Text on leather, and text over the room itself, where paper-dark ink
     /// would disappear into the floor.
     static let cream = Color(red: 0xF0 / 255, green: 0xEF / 255, blue: 0xDE / 255)
+    /// The tray's field (06), and the cover the recipe book is bound in: the
+    /// same `D` `tools/ui/build_ui.py` draws with, so the flat fill and the
+    /// authored `tray_edge` below it are one piece of leather.
+    static let leather = Color(red: 0x6B / 255, green: 0x38 / 255, blue: 0x3B / 255)
 }

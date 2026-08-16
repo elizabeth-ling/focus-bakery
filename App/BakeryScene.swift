@@ -247,13 +247,13 @@ final class BakeryScene: SKScene {
             shelf: shelf,
             timer: timer,
             tag: tag,
-            // The HUD lives in the open floor between station and counter: the
-            // top of the room sits under the status bar and Dynamic Island in
-            // a full-bleed scene, so nothing readable may anchor to the wall.
-            // It hangs a tile lower than the furniture requires, to leave a
-            // clear band between these digits and spec 06's overlay — the two
-            // text tiers have to stay physically apart (01), and the other tier
-            // has just moved in above.
+            // The HUD lives in the open floor between station and counter,
+            // hanging a tile lower than the furniture requires: the two text
+            // tiers have to stay physically apart (01), and the other tier is
+            // the tray directly above the room (06). The tray is what keeps
+            // this off the wall — before it, the room's top rows sat under the
+            // status bar and the Dynamic Island, and nothing readable could
+            // anchor there at all.
             //
             // A tile apart, not a fraction of one: the digits are drawn at
             // twice the tag's scale, so anything closer puts "baking…" through

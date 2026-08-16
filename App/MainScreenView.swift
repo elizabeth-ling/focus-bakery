@@ -27,8 +27,8 @@ enum MainScreenAction: Equatable {
     }
 }
 
-/// The main screen (spec 06): one full-bleed top-down room, with the little
-/// chrome that has to float over it.
+/// The main screen (spec 06): a tray across the top, and the top-down room
+/// filling everything below it.
 ///
 /// This is the app-layer half of spec 05's boundary. It derives a
 /// `BakeryScene.Model` from the store and pushes it down; the scene sends events
@@ -81,20 +81,36 @@ struct MainScreenView: View {
         let denialNotice = notifications.denialNotice
 
         GeometryReader { proxy in
-            // Read out here, where it still exists: everything below ignores
-            // the safe area, and an inset measured from inside that comes back
-            // as zero — which is a chrome bar under the Dynamic Island.
-            let safeArea = proxy.safeAreaInsets
+            // Read out here, where they still exist: everything below ignores
+            // the safe area, and insets measured from inside that come back as
+            // zero — which is a tray with its readouts under the Dynamic Island.
+            //
+            // The size has to be put back together, though. This reader sits
+            // *outside* the ignore, so it is proposed the safe area rather than
+            // the screen, while the ZStack below then draws into the whole
+            // thing from its top-left corner. Handing the short size down was a
+            // room ending 96pt above the bottom of the phone with white under
+            // it — the same trap as the insets, one layer along.
+            let insets = proxy.safeAreaInsets
+            let layout = ChromeLayout(
+                size: CGSize(
+                    width: proxy.size.width + insets.leading + insets.trailing,
+                    height: proxy.size.height + insets.top + insets.bottom
+                ),
+                safeAreaTop: insets.top,
+                safeAreaBottom: insets.bottom
+            )
             ZStack {
                 // No explicit isPaused: SKView already stops rendering while
                 // the app is backgrounded, which is all spec 05's lifecycle
                 // rule asks.
                 SpriteView(scene: scene)
-                    // Inside `ignoresSafeArea`, so the overlays are handed the
-                    // same size the scene is and all three agree on where the
-                    // room is.
+                    .frame(width: layout.scene.width, height: layout.scene.height)
+                    // Inside that frame, so the overlay is handed the same size
+                    // the scene is and both agree on where the room is.
                     .overlay { caseAccessibility }
-                    .overlay { chrome(deliverOwed: deliverOwed, safeArea: safeArea) }
+                    .position(x: layout.scene.midX, y: layout.scene.midY)
+                chrome(deliverOwed: deliverOwed, layout: layout)
                 if isShowingRecipeBook {
                     recipeBook
                         .zIndex(1)
@@ -187,23 +203,17 @@ struct MainScreenView: View {
         }
     }
 
-    /// The overlay: readouts and the settings entry across the top, one control
-    /// near the bottom, both placed by `ChromeLayout` so neither can drift onto
-    /// the oven, the station or the case (06).
-    private func chrome(deliverOwed: Bool, safeArea: EdgeInsets) -> some View {
-        GeometryReader { proxy in
-            let layout = ChromeLayout(
-                size: proxy.size,
-                safeAreaTop: safeArea.top,
-                safeAreaBottom: safeArea.bottom
-            )
-            BakeryChromeView(
+    /// The chrome: the tray across the top, and the one control floating near
+    /// the bottom, both placed by `ChromeLayout` — the tray above the room
+    /// entirely, the control clear of the door and the case (06).
+    private func chrome(deliverOwed: Bool, layout: ChromeLayout) -> some View {
+        ZStack {
+            BakeryTrayView(
+                layout: layout,
                 coins: store.progress.wallet.coinBalance,
                 streak: store.progress.streak.currentStreak,
                 onSettings: { isShowingSettings = true }
             )
-            .frame(width: layout.bar.width, height: layout.bar.height, alignment: .leading)
-            .position(x: layout.bar.midX, y: layout.bar.midY)
 
             BakeryActionButton(
                 action: MainScreenAction.resolved(

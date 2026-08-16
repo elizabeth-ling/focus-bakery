@@ -65,6 +65,26 @@ struct PixelImage: View {
     }
 }
 
+/// Pixel art stretched to whatever width it is given.
+///
+/// `PixelImage` magnifies by a whole number, which is rule 1 and is what every
+/// icon and plate wants. Art that has to span the screen cannot: a screen is not
+/// a whole number of art pixels across. This is the single exception, and it
+/// holds only because the art it draws is a vertical profile — every column
+/// identical — so there is no horizontal detail a partial pixel could land in.
+/// Height is the caller's to keep on the grid.
+struct StretchedPixelStrip: View {
+    let name: String
+    let atlas: PixelAtlas
+
+    var body: some View {
+        Image(decorative: PixelTexture.named(name, in: atlas).cgImage(), scale: 1)
+            .interpolation(.none)
+            .antialiased(false)
+            .resizable()
+    }
+}
+
 /// Presses darken the art in place. No motion: a scaling pixel sprite would
 /// break the whole-pixel rule mid-animation for nothing.
 struct PressedPixelButtonStyle: ButtonStyle {

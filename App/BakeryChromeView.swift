@@ -1,17 +1,53 @@
 import SwiftUI
 
-/// Spec 06's persistent chrome: the few things the room cannot say about itself.
+/// Spec 06's tray: the strip across the top of the screen that the coin balance,
+/// the streak and the settings entry live on.
+///
+/// It *takes* the top of the screen rather than floating over it — the room is
+/// laid out in what is left (`ChromeLayout`) — which is the whole point of the
+/// shape. Chrome that is never over the bakery cannot obscure the oven, and the
+/// readouts stop having to fit in the gap beside it.
+///
+/// Leather and brass, the materials the "+" plate and the recipe book's cover
+/// are made of (10, 14), so the app's chrome reads as one set of objects. Only
+/// the bottom edge is art: the field is a flat fill of the same leather, because
+/// a tray as wide as the screen cannot be authored at a fixed width.
+struct BakeryTrayView: View {
+    let layout: ChromeLayout
+    let coins: Int
+    let streak: Int
+    let onSettings: () -> Void
+
+    var body: some View {
+        ZStack {
+            PixelInk.leather
+                .frame(width: layout.tray.width, height: layout.tray.height)
+                .position(x: layout.tray.midX, y: layout.tray.midY)
+            StretchedPixelStrip(name: "tray_edge", atlas: .ui)
+                .frame(width: layout.trayEdge.width, height: layout.trayEdge.height)
+                .position(x: layout.trayEdge.midX, y: layout.trayEdge.midY)
+                // The shadow rows hang over the room; they are a picture of the
+                // tray, not part of it, and must not eat taps meant for the case.
+                .allowsHitTesting(false)
+            BakeryChromeView(coins: coins, streak: streak, onSettings: onSettings)
+                .frame(width: layout.content.width, height: layout.content.height)
+                .position(x: layout.content.midX, y: layout.content.midY)
+        }
+    }
+}
+
+/// What the tray carries: the few things the room cannot say about itself.
 ///
 /// A pure view — it reads no state and decides nothing. The shell hands down
 /// numbers and takes back taps, which is the same boundary the scene has (05),
 /// applied to the half of the screen that is SwiftUI.
 ///
-/// Every element here covers part of the bakery, so the list is short and each
-/// entry has to earn its place. The coin balance is chrome rather than in-scene
-/// bitmap text: it belongs inside the safe area, where the room's top row is
-/// not, and sprite digits do not exist to VoiceOver at all (13). The recipe book
-/// is deliberately absent — the "+" *is* the way into it (10), and two controls
-/// opening one modal would be two things covering the room instead of one.
+/// The list stays short even now the tray costs no bakery, because a status
+/// strip is read at a glance or not at all. The coin balance is chrome rather
+/// than in-scene bitmap text: it belongs inside the safe area, where the room's
+/// top row is not, and sprite digits do not exist to VoiceOver at all (13). The
+/// recipe book is deliberately absent — the "+" *is* the way into it (10), and a
+/// second control opening one modal would earn nothing.
 struct BakeryChromeView: View {
     let coins: Int
     let streak: Int
@@ -37,10 +73,11 @@ struct BakeryChromeView: View {
                 .opacity(dimmed ? 0.45 : 1)
             if !value.isEmpty {
                 // Cream and unshadowed. A one-pixel drop shadow is the usual
-                // way to hold text over busy art, but this font's counters are
-                // a pixel or two wide at chrome scale, so the shadow shows
-                // through them and a "0" fills in to a blob — checked on the
-                // simulator, which is the only place it shows.
+                // way to hold text over busy art, and it was built that way
+                // first: this font's counters are a pixel or two wide at chrome
+                // scale, so the shadow shows through them and a "0" fills in to
+                // a blob. The tray settles it for good — flat leather is not
+                // busy art, and there is nothing left to hold the text over.
                 Text(value)
                     .font(ChromeFont.pixel())
                     .foregroundStyle(PixelInk.cream)
