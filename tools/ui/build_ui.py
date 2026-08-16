@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Authors the recipe-book UI art into Resources/UI.atlas/.
+"""Authors the app's UI art into Resources/UI.atlas/.
 
 The Modern Interiors pack ships no panels, frames or buttons (spec 14), so the
-recipe-book modal's chrome (spec 10) is drawn here, pixel by pixel, in colours
-sampled from the pack's Palettes/palette_interiors.png so it reads as the same
-app. No pack pixels are used or read -- the output is original art and is
-committed, unlike the pack-derived atlases.
+recipe-book modal's chrome (spec 10) and the main screen's overlay (spec 06) are
+drawn here, pixel by pixel, in colours sampled from the pack's
+Palettes/palette_interiors.png so they read as the same app. No pack pixels are
+used or read -- the output is original art and is committed, unlike the
+pack-derived atlases.
 
     python3 tools/ui/build_ui.py                # write Resources/UI.atlas/
     python3 tools/ui/build_ui.py --preview /tmp/ui.png
@@ -143,6 +144,26 @@ def glyph_arrow(canvas, pointing_right):
         canvas.vline(x, 4 + inset, 11 - inset, "k")
 
 
+# Eight teeth and a hole, drawn larger than the book's glyphs because this one
+# sits over the room rather than on a page and has to read at a glance (06).
+GEAR_ROWS = [
+    "..kk..kk..",
+    ".kkkkkkkk.",
+    ".kkkkkkkk.",
+    ".kkk..kkk.",
+    "kkk....kkk",
+    "kkk....kkk",
+    ".kkk..kkk.",
+    ".kkkkkkkk.",
+    ".kkkkkkkk.",
+    "..kk..kk..",
+]
+
+
+def glyph_gear(canvas):
+    canvas.stamp(3, 3, GEAR_ROWS)
+
+
 def build_icon(name, glyph):
     canvas = plate()
     glyph(canvas)
@@ -185,6 +206,25 @@ COIN_ROWS = [
     "...KKKK...",
 ]
 
+# The streak (spec 09) beside the coin in the room's chrome (06). Fire rather
+# than brass, so a day count and a coin count are never the same gold at a
+# glance; the unlit state is the same sprite drained of colour, not a second
+# asset, which is what keeps a streak of zero neutral rather than a scold (11).
+FLAME_ROWS = [
+    "....KK....",
+    "...KRRK...",
+    "..KRRRRK..",
+    "..KRooRK..",
+    ".KRooooRK.",
+    ".KRoGGoRK.",
+    "KRooGGooRK",
+    "KRoGGGGoRK",
+    "KRoGGGGoRK",
+    "KRooGGooRK",
+    ".KRooooRK.",
+    "..KKKKKK..",
+]
+
 
 def build_stamped(name, rows):
     canvas = Canvas(len(rows[0]), len(rows))
@@ -218,6 +258,35 @@ def build_buy_button():
     canvas.put(109, 21, "o")
     canvas.hline(2, 109, 21, "o")
     return "button_buy", canvas
+
+
+def build_bake_button():
+    """The room's one floating control (spec 06): the start button's leather cut
+    round and stamped with a brass plus, so the thing that opens the recipe book
+    is visibly the same object family as the button inside it."""
+    canvas = Canvas(32, 32)
+    rounded_panel(canvas, 0, 0, 31, 31, 5, "K", "l")
+
+    # Bevel, following the corner steps: lit from above, shaded below.
+    canvas.hline(6, 25, 1, "L")
+    canvas.put(5, 2, "L")
+    canvas.put(26, 2, "L")
+    canvas.put(4, 3, "L")
+    canvas.put(27, 3, "L")
+    canvas.hline(6, 25, 30, "D")
+    canvas.put(5, 29, "D")
+    canvas.put(26, 29, "D")
+    canvas.put(4, 28, "D")
+    canvas.put(27, 28, "D")
+
+    # The plus, in the same brass as the coin and the lock.
+    canvas.rect(9, 14, 22, 17, "g")
+    canvas.rect(14, 9, 17, 22, "g")
+    canvas.hline(9, 22, 17, "o")
+    canvas.vline(17, 9, 22, "o")
+    canvas.hline(9, 22, 14, "G")
+    canvas.vline(14, 9, 22, "G")
+    return "button_bake", canvas
 
 
 def brass_corner(canvas, cx, cy, dx, dy):
@@ -306,10 +375,13 @@ def build_all():
         build_icon("stepper_minus", glyph_minus),
         build_icon("stepper_plus", glyph_plus),
         build_icon("button_close", glyph_cross),
+        build_icon("icon_gear", glyph_gear),
         build_start_button(),
         build_buy_button(),
+        build_bake_button(),
         build_stamped("lock_gold", LOCK_ROWS),
         build_stamped("coin", COIN_ROWS),
+        build_stamped("icon_flame", FLAME_ROWS),
     ]
     return assets
 
