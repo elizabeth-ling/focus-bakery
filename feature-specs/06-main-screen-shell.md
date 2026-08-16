@@ -245,7 +245,7 @@ to confirm along with Dynamic Type.
   translucent entries and `rgba` no longer assumes every colour is opaque.
 - **The status bar is pinned to light content** (`INFOPLIST_KEY_UIStatusBarStyle`).
   The tray's leather is dark, and the clock sits on it.
-- **`SettingsSheetView` is `13`'s screen, started.** Only what already works:
+- **`SettingsTrayView` is `13`'s screen, started.** Only what already works:
   the daily reminder and its time (`04`), the permission state with a link into
   iOS Settings, and the licence attribution (`14`, `NOTICE.md`). Sound and
   haptics land with `12`.

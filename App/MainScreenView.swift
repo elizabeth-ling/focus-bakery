@@ -119,10 +119,21 @@ struct MainScreenView: View {
                                     ? .opacity
                                     : .opacity.combined(with: .scale(scale: 1.04)))
                 }
+                // Two layers rather than one so each can arrive its own way: a
+                // scrim that slid in from the edge with the tray would be a
+                // black rectangle crossing the room.
+                if isShowingSettings {
+                    scrim { isShowingSettings = false }
+                        .zIndex(2)
+                        .transition(.opacity)
+                    settingsTray(layout: layout)
+                        .zIndex(3)
+                }
             }
             .ignoresSafeArea()
         }
         .animation(.easeOut(duration: 0.15), value: isShowingRecipeBook)
+        .animation(.easeOut(duration: 0.2), value: isShowingSettings)
         .task {
             scene.onEvent = { handle($0) }
             // The display tick: re-reads the store each second and re-derives
@@ -185,17 +196,6 @@ struct MainScreenView: View {
             DisplayCaseSheetView(day: store.today.displayCase) {
                 isShowingCase = false
             }
-        }
-        .sheet(isPresented: $isShowingSettings) {
-            SettingsSheetView(
-                authorization: notifications.authorization,
-                // Both of these are the same shape: the sheet changes the
-                // preference, and the app layer puts what is already running
-                // back in line with it — the pending alerts (04), the hum (12).
-                onSoundChanged: { feedback.settingsChanged() },
-                onReminderChanged: { notifications.reconcile(with: store) },
-                onDismiss: { isShowingSettings = false }
-            )
         }
         .confirmationDialog(
             "Throw out this bake?",
@@ -322,6 +322,38 @@ struct MainScreenView: View {
         case .baking: plan.stationTile
         case .delivering: plan.deliverTile
         }
+    }
+
+    /// The room, dimmed and made deaf to taps, under whatever is over it. The
+    /// tap dismisses, which is the way out for anyone who reaches past a modal
+    /// rather than for its control.
+    private func scrim(onTap: @escaping () -> Void) -> some View {
+        Color.black.opacity(0.55)
+            .ignoresSafeArea()
+            .onTapGesture(perform: onTap)
+            .accessibilityHidden(true)
+    }
+
+    /// Spec 13's screen, as a tray down the leading edge. It is presented here
+    /// rather than as a `.sheet` because a sheet on iPhone is a bottom sheet:
+    /// there is no detent that makes one a side bar.
+    private func settingsTray(layout: ChromeLayout) -> some View {
+        SettingsTrayView(
+            layout: layout,
+            authorization: notifications.authorization,
+            // Both of these are the same shape: the tray changes the
+            // preference, and the app layer puts what is already running
+            // back in line with it — the pending alerts (04), the hum (12).
+            onSoundChanged: { feedback.settingsChanged() },
+            onReminderChanged: { notifications.reconcile(with: store) },
+            onDismiss: { isShowingSettings = false }
+        )
+        // Innermost, so the slide is the tray's own width rather than the
+        // screen's: a transition moves the view it is attached to, and the
+        // leading frame below is as wide as the phone.
+        .transition(reduceMotion ? .opacity : .move(edge: .leading))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .accessibilityAddTraits(.isModal)
     }
 
     /// Spec 10's modal, fed and drained here so the boundary stays the same as

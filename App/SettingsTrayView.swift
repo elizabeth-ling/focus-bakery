@@ -1,7 +1,16 @@
 import SwiftUI
 import UserNotifications
 
-/// What the chrome's settings entry opens (spec 06).
+/// What the chrome's settings entry opens (spec 06): a tray down the leading
+/// edge, the whole height of the viewport and most of its width.
+///
+/// A side bar rather than a sheet because the list is a column of switches and
+/// a footer — a shape that wants height, which a bottom sheet is the one
+/// presentation that cannot give it. It comes from the leading edge because
+/// that is the end of the tray the gear is on, so the drawer opens out from
+/// under its own control. It stops short of the trailing edge so a strip of the
+/// room stays visible beside it, and the settings read as a drawer pulled over
+/// the bakery rather than a screen the app navigated to.
 ///
 /// Spec 13's list, whole and deliberately short: sound and haptics (12), the
 /// daily reminder and its time (04), what permission the app actually has, and
@@ -17,7 +26,8 @@ import UserNotifications
 /// Every toggle writes straight through to `Settings` and asks the caller to
 /// reconcile whatever it affects, because scheduling and audio both belong to
 /// the app layer and never to a view (04, 06, 12).
-struct SettingsSheetView: View {
+struct SettingsTrayView: View {
+    let layout: ChromeLayout
     let authorization: UNAuthorizationStatus
     let onSoundChanged: () -> Void
     let onReminderChanged: () -> Void
@@ -31,22 +41,35 @@ struct SettingsSheetView: View {
     private let settings = Settings()
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
-                header
-                feedback
-                reminder
-                if !authorization.deliversAlerts {
-                    permissionNotice
+        ZStack(alignment: .top) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 28) {
+                    header
+                    feedback
+                    reminder
+                    if !authorization.deliversAlerts {
+                        permissionNotice
+                    }
+                    footer
                 }
-                footer
+                .padding(.horizontal, 20)
+                // The tray covers the viewport outright, so there is no safe
+                // area left inside it to read: the status bar and the home
+                // indicator are cleared with the insets the layout was handed.
+                .padding(.top, layout.safeAreaTop + 20)
+                .padding(.bottom, layout.safeAreaBottom + 20)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 20)
+            // The status bar's band, in the tray's own material rather than its
+            // paper. The clock is pinned to light content because it sits on the
+            // chrome tray (06), and a tray that covers the viewport puts cream
+            // under it — white glyphs on paper, and the room's dark strip beside
+            // them, cannot both be read at one status-bar style. Leather here
+            // means the whole band stays dark and the pinning stays true.
+            PixelInk.leather
+                .frame(height: layout.safeAreaTop)
         }
+        .frame(width: layout.settingsTray.width, height: layout.settingsTray.height)
         .background(PixelInk.paper)
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
         .task {
             isSoundOn = settings.soundEnabled
             isHapticsOn = settings.hapticsEnabled

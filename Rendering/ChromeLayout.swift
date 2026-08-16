@@ -30,6 +30,17 @@ struct ChromeLayout: Equatable {
     /// How far the readouts stand in from the screen's edges.
     private static let insetArtPixels = 8
 
+    /// How much of the screen's width the settings tray takes. Most of it, but
+    /// not all: the strip of room left showing is what says the tray is a
+    /// drawer pulled over the bakery rather than a screen the app navigated to.
+    private static let settingsWidthFraction: CGFloat = 0.82
+
+    /// The settings tray (13): a side bar down the leading edge, the whole
+    /// height of the viewport and most of its width. Leading because that is
+    /// the end of the tray the gear is on (06) — the drawer comes out from
+    /// under the control that opens it.
+    let settingsTray: CGRect
+
     /// The tray across the top: full width, from the screen's top edge down
     /// through the rail. Its material runs up under the status bar rather than
     /// starting below it, so the notch band is part of the tray instead of a
@@ -62,7 +73,16 @@ struct ChromeLayout: Equatable {
     /// of one while it runs. In screen coordinates, like everything else here.
     let action: CGRect
 
+    /// The insets the system asked for, kept rather than only consumed. A
+    /// surface that covers the viewport outright — the settings tray — has no
+    /// safe area left to read, so it holds its own content clear of the status
+    /// bar and the home indicator with these.
+    let safeAreaTop: CGFloat
+    let safeAreaBottom: CGFloat
+
     init(size: CGSize, safeAreaTop: CGFloat, safeAreaBottom: CGFloat) {
+        self.safeAreaTop = safeAreaTop
+        self.safeAreaBottom = safeAreaBottom
         let chromePixel = CGFloat(PixelGrid.chromeScale)
         // Rounded up to a whole chrome pixel. The tray's depth is what offsets
         // the room, and half a point of offset would put a scene that snapped
@@ -104,6 +124,12 @@ struct ChromeLayout: Equatable {
             width: size.width,
             height: max(0, size.height - modalClose.maxY)
         )
+
+        // Rounded to a whole chrome pixel: the tray's own edge is a hard line
+        // over the room, and half a point of it lands the paper mid-pixel.
+        let settingsWidth = ((size.width * Self.settingsWidthFraction) / chromePixel)
+            .rounded() * chromePixel
+        settingsTray = CGRect(x: 0, y: 0, width: settingsWidth, height: size.height)
 
         let layout = RoomLayout(fitting: scene.size)
         let plan = RoomPlan(fitting: layout)

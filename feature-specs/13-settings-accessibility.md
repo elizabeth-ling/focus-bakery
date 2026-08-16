@@ -103,11 +103,24 @@ same app.
 
 ## How it is built
 
-- **The settings screen** (`App/SettingsSheetView.swift`) is spec 06's sheet,
+- **The settings screen** (`App/SettingsTrayView.swift`) is spec 06's entry,
   finished. The list is deliberately the same length it was: sound, haptics, the
   reminder and its time, the permission notice, and the footer. Every toggle
   writes straight through to `Settings` and asks the app layer to reconcile what
   it affects, because scheduling and audio never belong to a view (`04`, `12`).
+- **It is a side tray, not a sheet** (`ChromeLayout.settingsTray`): the whole
+  height of the viewport, most of its width, presented as an overlay in
+  `MainScreenView` the way the recipe book is. A column of switches over a
+  footer wants height, which is the one thing a bottom sheet cannot give it —
+  at the `.medium` detent the footer was below the fold and the reminder's time
+  picker landed on the grabber. It comes in from the **leading** edge, the end
+  of the chrome tray the gear sits at (`06`), so the drawer opens out from under
+  its own control; it stops short of the trailing edge so a strip of room stays
+  visible beside it and the tray reads as pulled over the bakery rather than
+  navigated to. Covering the viewport means covering the status bar, so it caps
+  its own top band in `PixelInk.leather`: the clock is pinned to light content
+  because it sits on the chrome tray (`06`), and cream under white glyphs is the
+  one place that pinning would come out unreadable.
 - **The footer** gained privacy and support. Privacy is a *statement* rather than
   a link because there is nothing to link to — the app has no networking code at
   all, and every byte it keeps is the JSON in Application Support and the

@@ -214,6 +214,28 @@ struct ChromeLayoutTests {
         }
     }
 
+    /// Spec 13's tray, as the shape it is: a side bar, not a bottom sheet. The
+    /// height claim is the whole viewport including both safe areas — it draws
+    /// its own margins — and the width claim is "most of it, and not all", since
+    /// a tray that reached both edges would be a screen rather than a drawer
+    /// over the room. It hangs off the leading edge, the end the gear is on.
+    @Test("The settings tray is a full-height side bar over most of the width")
+    func theSettingsTrayIsASideBar() {
+        for phone in Self.phones {
+            let tray = phone.chrome.settingsTray
+            #expect(tray.minY == 0, "\(phone.name): the tray stops below the top of the screen")
+            #expect(tray.height == phone.size.height,
+                    "\(phone.name): the tray does not span the viewport")
+            #expect(tray.minX == 0, "\(phone.name): the tray is off the leading edge")
+            #expect(tray.width > phone.size.width / 2,
+                    "\(phone.name): the tray is not most of the width")
+            #expect(tray.maxX < phone.size.width,
+                    "\(phone.name): the tray leaves no room showing beside it")
+            #expect(tray.width.truncatingRemainder(dividingBy: CGFloat(PixelGrid.chromeScale)) == 0,
+                    "\(phone.name): the tray's edge lands mid-pixel")
+        }
+    }
+
     @Test("A scene too small to seat a room still resolves usable chrome")
     func degenerateScenesStillResolve() {
         let chrome = ChromeLayout(size: CGSize(width: 200, height: 300), safeAreaTop: 20, safeAreaBottom: 0)
