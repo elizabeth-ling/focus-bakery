@@ -1,16 +1,43 @@
 import SpriteKit
 import SwiftUI
 
-/// Hosts the bakery room against the real store, launched with `-bakeryRoom`.
-/// Temporary in the same sense as `PersistencePlaceholderView`: spec 06 builds
-/// the real shell around the scene; until then this is the surface spec 05's
-/// loop is validated on.
+/// What the room offers at the bottom, from spec 06's state table.
+enum MainScreenAction: Equatable {
+    /// Nothing is baking: the "+" opens the recipe book (10).
+    case start
+    /// One bake is running, and the only way out of it is to throw it away —
+    /// confirmed first (03).
+    case stop
+    /// The completion payoff is playing. The room is busy being celebrated in,
+    /// and the "+" comes back once the baker has put the treat down (05).
+    case none
+
+    static func resolved(for resolution: SessionResolution, isCelebrating: Bool) -> MainScreenAction {
+        switch resolution {
+        case .baking:
+            .stop
+        // A bake whose end has passed but which has not been settled yet: the
+        // payoff is one tick away, and offering a "+" in between would flash a
+        // control the next frame takes back.
+        case .completed:
+            .none
+        case .idle, .burned:
+            isCelebrating ? .none : .start
+        }
+    }
+}
+
+/// The main screen (spec 06): one full-bleed top-down room, with the little
+/// chrome that has to float over it.
 ///
-/// The spec's boundary lives here. This view derives a `BakeryScene.Model`
-/// from the store and pushes it down; the scene sends events back up. Nothing
-/// else crosses — the scene never touches the store, and this view never
-/// reaches into the scene's nodes.
-struct BakeryRoomView: View {
+/// This is the app-layer half of spec 05's boundary. It derives a
+/// `BakeryScene.Model` from the store and pushes it down; the scene sends events
+/// back up. Nothing else crosses — the scene never touches the store, and this
+/// view never reaches into the scene's nodes.
+///
+/// SwiftUI owns everything around that: navigation, chrome, modals, `scenePhase`,
+/// persistence and notification scheduling (00, 06).
+struct MainScreenView: View {
     @Environment(BakeryStore.self) private var store
     @Environment(BakeryNotifications.self) private var notifications
     @Environment(\.scenePhase) private var scenePhase
@@ -31,14 +58,16 @@ struct BakeryRoomView: View {
     @State private var watchedBakeWhileActive = false
     @State private var isConfirmingCancel = false
     @State private var isShowingOutcome = false
+    @State private var isShowingDenialNotice = false
     /// Openable at launch for the same reason the book is: a case with a day's
     /// baking in it is a state no launch can otherwise reach, since filling it
     /// takes a day's worth of real timers.
     @State private var isShowingCase = ProcessInfo.processInfo.arguments.contains("-displayCase")
+    @State private var isShowingSettings = ProcessInfo.processInfo.arguments.contains("-settings")
     /// Openable at launch so the modal can be screenshotted without tap
-    /// tooling, the same way `-pixelProof` serves spec 01. `-recipeBookLocked`
-    /// opens it on the first locked page instead, which is the other state
-    /// worth a screenshot and the one no launch can otherwise reach.
+    /// tooling. `-recipeBookLocked` opens it on the first locked page instead,
+    /// which is the other state worth a screenshot and the one no launch can
+    /// otherwise reach.
     @State private var isShowingRecipeBook = ProcessInfo.processInfo.arguments
         .contains { $0 == "-recipeBook" || $0 == "-recipeBookLocked" }
 
@@ -49,25 +78,32 @@ struct BakeryRoomView: View {
         // dependency is registered (the spec 03 lesson).
         let outcome = store.pendingOutcome
         let deliverOwed = watchedBakeWhileActive && outcome?.outcome == .completed
+        let denialNotice = notifications.denialNotice
 
-        ZStack(alignment: .bottom) {
-            // No explicit isPaused: SKView already stops rendering while the
-            // app is backgrounded, which is all spec 05's lifecycle rule asks.
-            SpriteView(scene: scene)
-                // Inside `ignoresSafeArea`, so the overlay is handed the same
-                // size the scene is and the two agree on where the case is.
-                .overlay { caseAccessibility }
-                .ignoresSafeArea()
-            if !isShowingRecipeBook {
-                controls
+        GeometryReader { proxy in
+            // Read out here, where it still exists: everything below ignores
+            // the safe area, and an inset measured from inside that comes back
+            // as zero — which is a chrome bar under the Dynamic Island.
+            let safeArea = proxy.safeAreaInsets
+            ZStack {
+                // No explicit isPaused: SKView already stops rendering while
+                // the app is backgrounded, which is all spec 05's lifecycle
+                // rule asks.
+                SpriteView(scene: scene)
+                    // Inside `ignoresSafeArea`, so the overlays are handed the
+                    // same size the scene is and all three agree on where the
+                    // room is.
+                    .overlay { caseAccessibility }
+                    .overlay { chrome(deliverOwed: deliverOwed, safeArea: safeArea) }
+                if isShowingRecipeBook {
+                    recipeBook
+                        .zIndex(1)
+                        .transition(reduceMotion
+                                    ? .opacity
+                                    : .opacity.combined(with: .scale(scale: 1.04)))
+                }
             }
-            if isShowingRecipeBook {
-                recipeBook
-                    .zIndex(1)
-                    .transition(reduceMotion
-                                ? .opacity
-                                : .opacity.combined(with: .scale(scale: 1.04)))
-            }
+            .ignoresSafeArea()
         }
         .animation(.easeOut(duration: 0.15), value: isShowingRecipeBook)
         .task {
@@ -106,12 +142,36 @@ struct BakeryRoomView: View {
                  ? "\(RecipeCatalog.recipe(for: session.recipeID).name), waiting in the case."
                  : "You left the bakery mid-bake.")
         }
+        // Told once, and only ever after the user has started the bake the
+        // alert was for (04). It arrives here rather than in settings because
+        // this is where they were when permission was refused.
+        .onChange(of: denialNotice, initial: true) { _, notice in
+            isShowingDenialNotice = notice != nil
+        }
+        .alert(
+            "Notifications are off",
+            isPresented: $isShowingDenialNotice,
+            presenting: denialNotice
+        ) { _ in
+            Button("OK") { notifications.acknowledgeDenialNotice() }
+        } message: { notice in
+            Text(notice)
+        }
         .sheet(isPresented: $isShowingCase) {
             // Read here rather than captured when the tap arrived, so a bake
             // landing while the sheet is open shows up in it.
             DisplayCaseSheetView(day: store.today.displayCase) {
                 isShowingCase = false
             }
+        }
+        .sheet(isPresented: $isShowingSettings) {
+            SettingsSheetView(
+                authorization: notifications.authorization,
+                // Scheduling belongs to the app layer, so the sheet changes the
+                // preference and this puts the pending list back in line (04).
+                onReminderChanged: { notifications.reconcile(with: store) },
+                onDismiss: { isShowingSettings = false }
+            )
         }
         .confirmationDialog(
             "Throw out this bake?",
@@ -127,23 +187,34 @@ struct BakeryRoomView: View {
         }
     }
 
-    /// Scaffold controls until spec 06 brings the real "+" chrome. SwiftUI,
-    /// physically apart from the bitmap text (01). The "+" only exists while
-    /// nothing is baking, which is how the modal cannot be opened mid-session
-    /// (specs 06, 10).
-    private var controls: some View {
-        HStack(spacing: 12) {
-            switch store.resolution {
-            case .baking:
-                Button("Cancel bake", role: .destructive) { isConfirmingCancel = true }
-            default:
-                Button("+") { isShowingRecipeBook = true }
-                    .font(ChromeFont.pixel(3))
-                    .accessibilityLabel("Start a bake")
-            }
+    /// The overlay: readouts and the settings entry across the top, one control
+    /// near the bottom, both placed by `ChromeLayout` so neither can drift onto
+    /// the oven, the station or the case (06).
+    private func chrome(deliverOwed: Bool, safeArea: EdgeInsets) -> some View {
+        GeometryReader { proxy in
+            let layout = ChromeLayout(
+                size: proxy.size,
+                safeAreaTop: safeArea.top,
+                safeAreaBottom: safeArea.bottom
+            )
+            BakeryChromeView(
+                coins: store.progress.wallet.coinBalance,
+                streak: store.progress.streak.currentStreak,
+                onSettings: { isShowingSettings = true }
+            )
+            .frame(width: layout.bar.width, height: layout.bar.height, alignment: .leading)
+            .position(x: layout.bar.midX, y: layout.bar.midY)
+
+            BakeryActionButton(
+                action: MainScreenAction.resolved(
+                    for: store.resolution,
+                    isCelebrating: deliverOwed
+                ),
+                onStart: { isShowingRecipeBook = true },
+                onStop: { isConfirmingCancel = true }
+            )
+            .position(x: layout.action.midX, y: layout.action.midY)
         }
-        .buttonStyle(.borderedProminent)
-        .padding(.bottom, 20)
     }
 
     /// The display case as VoiceOver sees it. The room is sprites, so the case
@@ -156,12 +227,10 @@ struct BakeryRoomView: View {
     private var caseAccessibility: some View {
         GeometryReader { proxy in
             let layout = RoomLayout(fitting: proxy.size)
-            let region = RoomPlan(fitting: layout).caseRegion(in: layout)
+            let region = layout.inViewSpace(RoomPlan(fitting: layout).caseRegion(in: layout))
             Color.clear
                 .frame(width: region.width, height: region.height)
-                // SpriteKit's y counts up from the bottom and SwiftUI's counts
-                // down from the top; this is that flip and nothing else.
-                .position(x: region.midX, y: proxy.size.height - region.midY)
+                .position(x: region.midX, y: region.midY)
                 .accessibilityElement()
                 .accessibilityLabel("Display case")
                 .accessibilityValue(caseSummary)
@@ -231,7 +300,6 @@ struct BakeryRoomView: View {
         return BakeryScene.Model(
             phase: phase,
             treats: store.today.displayCase.treats,
-            coins: store.progress.wallet.coinBalance,
             reduceMotion: reduceMotion
         )
     }

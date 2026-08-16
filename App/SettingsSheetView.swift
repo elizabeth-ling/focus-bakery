@@ -70,7 +70,7 @@ struct SettingsSheetView: View {
     private var reminder: some View {
         VStack(alignment: .leading, spacing: 12) {
             Toggle(isOn: $isReminderOn) {
-                Text("Open the bakery")
+                Text("Daily reminder")
                     .font(ChromeFont.pixel())
                     .foregroundStyle(PixelInk.heading)
             }

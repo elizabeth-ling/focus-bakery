@@ -30,7 +30,6 @@ final class BakeryScene: SKScene {
         /// Today's case contents in completion order. Spec 08 owns quantities
         /// and overflow; the scene shows what fits on the shelf.
         var treats: [RecipeID] = []
-        var coins: Int = 0
         var reduceMotion: Bool = false
     }
 
@@ -85,10 +84,8 @@ final class BakeryScene: SKScene {
         let shelf: SKNode
         let timer: BitmapTextNode
         let tag: BitmapTextNode
-        let coins: BitmapTextNode
         let timerCenter: CGPoint
         let tagCenter: CGPoint
-        let coinsCenter: CGPoint
         let caseRegion: CGRect
     }
 
@@ -181,6 +178,25 @@ final class BakeryScene: SKScene {
     var displayedTreats: [TreatTally] { renderedShelf ?? [] }
     /// Where the case's sprites may land, for the overflow check.
     var caseRegion: CGRect? { stage?.caseRegion }
+    /// Every bitmap string the room is currently drawing, in scene
+    /// coordinates. Spec 06 keeps the two text tiers physically apart, and its
+    /// overlay is checked against these rather than by eye.
+    var bitmapTextFrames: [CGRect] {
+        guard let stage else { return [] }
+        let counts = stage.shelf.children.flatMap { slot in
+            slot.children.compactMap { $0 as? BitmapTextNode }
+        }
+        return ([stage.timer, stage.tag] + counts)
+            .filter { !$0.text.isEmpty }
+            .map { text in
+                CGRect(
+                    x: text.position.x,
+                    y: text.position.y - text.size.height,
+                    width: text.size.width,
+                    height: text.size.height
+                )
+            }
+    }
     /// Every drawn slot's extent in scene coordinates — what spec 08's "never
     /// spills outside the case" is checked against.
     var shelfSlotFrames: [CGRect] {
@@ -218,8 +234,7 @@ final class BakeryScene: SKScene {
 
         let timer = BitmapTextNode("", scale: layout.scale * 2)
         let tag = BitmapTextNode("", scale: layout.scale)
-        let coins = BitmapTextNode("", scale: layout.scale)
-        for text in [timer, tag, coins] {
+        for text in [timer, tag] {
             text.zPosition = 1_000
             addChild(text)
         }
@@ -232,23 +247,24 @@ final class BakeryScene: SKScene {
             shelf: shelf,
             timer: timer,
             tag: tag,
-            coins: coins,
             // The HUD lives in the open floor between station and counter: the
             // top of the room sits under the status bar and Dynamic Island in
             // a full-bleed scene, so nothing readable may anchor to the wall.
+            // It hangs a tile lower than the furniture requires, to leave a
+            // clear band between these digits and spec 06's overlay — the two
+            // text tiers have to stay physically apart (01), and the other tier
+            // has just moved in above.
+            //
+            // A tile apart, not a fraction of one: the digits are drawn at
+            // twice the tag's scale, so anything closer puts "baking…" through
+            // their feet.
             timerCenter: CGPoint(
                 x: layout.roomFrame.midX,
-                y: layout.tileRect(column: 0, row: plan.stationTile.row + 1).maxY
-                    - layout.tileSize * 0.3
+                y: layout.tileRect(column: 0, row: plan.stationTile.row + 2).midY
             ),
             tagCenter: CGPoint(
                 x: layout.roomFrame.midX,
-                y: layout.tileRect(column: 0, row: plan.stationTile.row + 1).maxY
-                    - layout.tileSize * 0.75
-            ),
-            coinsCenter: CGPoint(
-                x: layout.roomFrame.maxX - layout.tileSize * 0.75,
-                y: layout.roomFrame.maxY - layout.tileSize * 1.5
+                y: layout.tileRect(column: 0, row: plan.stationTile.row + 3).midY
             ),
             caseRegion: caseRegion
         )
@@ -440,7 +456,6 @@ final class BakeryScene: SKScene {
         }
         setText(stage.timer, timerText, centeredOn: stage.timerCenter)
         setText(stage.tag, tagText, centeredOn: stage.tagCenter)
-        setText(stage.coins, "\(model.coins)c", centeredOn: stage.coinsCenter)
     }
 
     private func setText(_ node: BitmapTextNode, _ text: String, centeredOn point: CGPoint) {

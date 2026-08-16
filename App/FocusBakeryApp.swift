@@ -12,7 +12,7 @@ struct FocusBakeryApp: App {
 
     var body: some Scene {
         WindowGroup {
-            root
+            MainScreenView()
                 .modifier(NotificationSync(store: store, notifications: notifications))
                 .environment(store)
                 .environment(notifications)
@@ -35,27 +35,6 @@ struct FocusBakeryApp: App {
             default:
                 break
             }
-        }
-    }
-
-    /// Spec 01's screenshot criterion has to judge the scene full-bleed, with no
-    /// system chrome beside its bitmap text, so the proof surface is selected at
-    /// launch rather than navigated to — both scaffolds stay reachable and
-    /// neither has to host the other:
-    ///
-    ///     xcrun simctl launch <device> com.focusbakery.FocusBakery -pixelProof
-    ///
-    /// `-bakeryRoom` selects spec 05's room against the real store the same
-    /// way. Temporary, all three scaffolds: spec 06 makes the room the real
-    /// root and retires the flags.
-    @ViewBuilder
-    private var root: some View {
-        if ProcessInfo.processInfo.arguments.contains("-pixelProof") {
-            PixelProofView()
-        } else if ProcessInfo.processInfo.arguments.contains("-bakeryRoom") {
-            BakeryRoomView()
-        } else {
-            PersistencePlaceholderView()
         }
     }
 

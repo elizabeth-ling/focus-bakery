@@ -289,6 +289,26 @@ def build_bake_button():
     return "button_bake", canvas
 
 
+def build_stop_button():
+    """The way out of a bake (spec 03), standing in the same slot as the "+".
+
+    Paper rather than leather, and ink rather than brass: leaving a bake early
+    is an escape hatch, not an invitation, and it must not compete with the oven
+    for attention while a session runs."""
+    canvas = Canvas(32, 32)
+    rounded_panel(canvas, 0, 0, 31, 31, 5, "K", "p")
+    canvas.hline(6, 25, 1, "P")
+    canvas.put(5, 2, "P")
+    canvas.put(26, 2, "P")
+    canvas.hline(6, 25, 30, "d")
+    canvas.put(5, 29, "d")
+    canvas.put(26, 29, "d")
+    for i in range(11):
+        canvas.rect(9 + i, 9 + i, 12 + i, 12 + i, "k")
+        canvas.rect(9 + i, 19 - i, 12 + i, 22 - i, "k")
+    return "button_stop", canvas
+
+
 def brass_corner(canvas, cx, cy, dx, dy):
     """A brass corner protector: an L of `size` px hugging the cover corner at
     (cx, cy), extending inwards along (dx, dy)."""
@@ -379,6 +399,7 @@ def build_all():
         build_start_button(),
         build_buy_button(),
         build_bake_button(),
+        build_stop_button(),
         build_stamped("lock_gold", LOCK_ROWS),
         build_stamped("coin", COIN_ROWS),
         build_stamped("icon_flame", FLAME_ROWS),

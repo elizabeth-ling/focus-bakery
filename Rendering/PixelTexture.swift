@@ -64,3 +64,12 @@ struct PixelImage: View {
             .frame(width: size.width * CGFloat(scale), height: size.height * CGFloat(scale))
     }
 }
+
+/// Presses darken the art in place. No motion: a scaling pixel sprite would
+/// break the whole-pixel rule mid-animation for nothing.
+struct PressedPixelButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.6 : 1)
+    }
+}

@@ -280,12 +280,3 @@ struct RecipeBookModalView: View {
         .accessibilityLabel("Close")
     }
 }
-
-/// Presses darken the art in place. No motion: a scaling pixel sprite would
-/// break the whole-pixel rule mid-animation for nothing.
-private struct PressedPixelButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .opacity(configuration.isPressed ? 0.6 : 1)
-    }
-}
