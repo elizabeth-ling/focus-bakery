@@ -192,6 +192,30 @@ struct BakerySceneTests {
         #expect(scene.visibleSlotCount == 1)
     }
 
+    /// Spec 13's harder half: reduced motion must not mean state changes become
+    /// *invisible*. Reaching every state is not enough if two of them then look
+    /// identical with the animation taken away — so this compares what is left
+    /// of the room once nothing is moving.
+    @Test("With reduced motion, no two session states look alike")
+    func reducedMotionKeepsStatesApart() {
+        // Everything a still frame of the room can say: whether the oven is
+        // lit, what the countdown reads, and what is on the counter.
+        func appearance(_ phase: BakeryScene.Model.Phase) -> String {
+            let scene = makeScene()
+            scene.apply(BakeryScene.Model(phase: phase, treats: [.cake], reduceMotion: true))
+            return "oven \(scene.isOvenRunning), timer '\(scene.displayedTimer)', case \(scene.visibleSlotCount)"
+        }
+
+        let appearances = Self.phases.map(appearance)
+        #expect(Set(appearances).count == Self.phases.count,
+                "two states are indistinguishable at rest: \(appearances)")
+
+        // And the same again for the reader who cannot see any of it (13).
+        let spoken = Self.phases.map { "\(RoomNarration.oven($0)) / \(RoomNarration.baker($0))" }
+        #expect(Set(spoken).count == Self.phases.count,
+                "two states say the same thing: \(spoken)")
+    }
+
     /// Spec 08's overflow criterion. Quantities are what make it hold: slots are
     /// spent per recipe, so a heavy day raises counts rather than reaching for
     /// shelf the room does not have.
