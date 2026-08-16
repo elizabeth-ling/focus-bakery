@@ -109,7 +109,7 @@ struct MainScreenView: View {
                     .frame(width: layout.scene.width, height: layout.scene.height)
                     // Inside that frame, so the overlay is handed the same size
                     // the scene is and both agree on where the room is.
-                    .overlay { caseAccessibility }
+                    .overlay { roomAccessibility }
                     .position(x: layout.scene.midX, y: layout.scene.midY)
                 chrome(deliverOwed: deliverOwed, layout: layout)
                 if isShowingRecipeBook {
@@ -239,37 +239,88 @@ struct MainScreenView: View {
         }
     }
 
-    /// The display case as VoiceOver sees it. The room is sprites, so the case
-    /// is otherwise not merely unlabelled but absent — and the sheet it opens
-    /// is the accessible half of the feature (08, 13).
+    /// The room as VoiceOver sees it (spec 13).
+    ///
+    /// Almost nothing on this screen is a native control: the oven, the baker
+    /// and the case are `SKNode`s and the countdown is bitmap sprites, so
+    /// without this the main screen is a tray and one button over an empty
+    /// rectangle. Three elements, which is what the criteria name — the oven
+    /// carries the remaining time, the baker carries what it is doing, and the
+    /// case carries today's contents and the way into the sheet.
+    ///
+    /// Every frame is grown to clear the minimum target first: a fixture that
+    /// spans one tile is 32pt, and a VoiceOver element too small to land on is
+    /// the same problem as a tap target too small to hit.
     ///
     /// Hit testing stays off so the scene keeps the actual tap and remains the
-    /// single path to `.caseTapped`. Spec 13 owns the room's full pass; the
-    /// baker and the oven still have nothing here.
-    private var caseAccessibility: some View {
+    /// single path to `.caseTapped`.
+    private var roomAccessibility: some View {
         GeometryReader { proxy in
             let layout = RoomLayout(fitting: proxy.size)
-            let region = layout.inViewSpace(RoomPlan(fitting: layout).caseRegion(in: layout))
-            Color.clear
-                .frame(width: region.width, height: region.height)
-                .position(x: region.midX, y: region.midY)
-                .accessibilityElement()
-                .accessibilityLabel("Display case")
-                .accessibilityValue(caseSummary)
-                .accessibilityHint("Lists today's bakes")
-                .accessibilityAddTraits(.isButton)
-                .accessibilityAction { isShowingCase = true }
+            let plan = RoomPlan(fitting: layout)
+            let bounds = CGRect(origin: .zero, size: proxy.size)
+            let phase = model.phase
+            let caseFrame = reachable(plan.caseRegion(in: layout), in: layout, within: bounds)
+
+            ZStack {
+                readout(
+                    reachable(plan.ovenRegion(in: layout), in: layout, within: bounds),
+                    label: "Oven",
+                    value: RoomNarration.oven(phase)
+                )
+                readout(
+                    reachable(
+                        plan.bakerRegion(standingOn: bakerTile(for: phase, in: plan), in: layout),
+                        in: layout,
+                        within: bounds
+                    ),
+                    label: "Baker",
+                    value: RoomNarration.baker(phase)
+                )
+                Color.clear
+                    .frame(width: caseFrame.width, height: caseFrame.height)
+                    .accessibilityElement()
+                    .accessibilityLabel("Display case")
+                    .accessibilityValue(
+                        RoomNarration.displayCase(count: store.today.displayCase.totalCount)
+                    )
+                    .accessibilityHint("Lists today's bakes")
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityAction { isShowingCase = true }
+                    .position(x: caseFrame.midX, y: caseFrame.midY)
+            }
         }
         .allowsHitTesting(false)
     }
 
-    /// Never phrased as loss: an empty case is a bakery about to open (08, 11).
-    private var caseSummary: String {
-        let count = store.today.displayCase.totalCount
-        return switch count {
-        case 0: "Empty, ready for today"
-        case 1: "1 treat today"
-        default: "\(count) treats today"
+    /// A room region in the view's coordinates, big enough to land on.
+    private func reachable(
+        _ region: CGRect,
+        in layout: RoomLayout,
+        within bounds: CGRect
+    ) -> CGRect {
+        layout.inViewSpace(region).grown(toAtLeast: ChromeLayout.minimumTarget, within: bounds)
+    }
+
+    /// Labelled before it is placed: `position` fills the space it is given, and
+    /// an element built the other way round would claim the whole room.
+    private func readout(_ frame: CGRect, label: String, value: String) -> some View {
+        Color.clear
+            .frame(width: frame.width, height: frame.height)
+            .accessibilityElement()
+            .accessibilityLabel(label)
+            .accessibilityValue(value)
+            .position(x: frame.midX, y: frame.midY)
+    }
+
+    /// Which fixture the baker is at, from the phase alone. The scene's own
+    /// anchors are keyed by *activity* and include the walk between them (05);
+    /// this only needs where the walk ends, which the phase already says.
+    private func bakerTile(for phase: BakeryScene.Model.Phase, in plan: RoomPlan) -> RoomTile {
+        switch phase {
+        case .idle: plan.restTile
+        case .baking: plan.stationTile
+        case .delivering: plan.deliverTile
         }
     }
 

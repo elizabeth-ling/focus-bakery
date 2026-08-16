@@ -108,6 +108,33 @@ struct ChromeLayout: Equatable {
     }
 }
 
+extension CGRect {
+    /// Grown about its centre until it clears `side` on both axes, then held
+    /// inside `bounds`.
+    ///
+    /// Spec 13's arithmetic, and the reason an in-world region can never be one
+    /// tile: 16 art pixels at ×2 is 32pt, which does not clear the 44pt minimum.
+    /// A fixture's full extent usually does — the display case spans the whole
+    /// counter line — so this is what catches the axis that does not, by padding
+    /// out past the sprite rather than by moving it.
+    func grown(toAtLeast side: CGFloat, within bounds: CGRect) -> CGRect {
+        let grown = insetBy(
+            dx: -max(0, (side - width) / 2),
+            dy: -max(0, (side - height) / 2)
+        )
+        // Pushed back inside rather than clipped: a region padded past the
+        // room's margin is still owed its whole target, and the room's edge is
+        // wall the user cannot reach anyway.
+        return CGRect(
+            origin: CGPoint(
+                x: min(max(grown.minX, bounds.minX), max(bounds.minX, bounds.maxX - grown.width)),
+                y: min(max(grown.minY, bounds.minY), max(bounds.minY, bounds.maxY - grown.height))
+            ),
+            size: grown.size
+        )
+    }
+}
+
 extension RoomLayout {
     /// A scene rect in the view's coordinates. SpriteKit's y counts up from the
     /// bottom and SwiftUI's counts down from the top; this is that flip and

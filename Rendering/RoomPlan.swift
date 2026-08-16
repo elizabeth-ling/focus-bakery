@@ -128,16 +128,26 @@ extension RoomPlan {
         )
     }
 
-    /// Where the baker stands to work, sprite included: one tile of floor with
-    /// two tiles of baker on it.
-    func stationRegion(in layout: RoomLayout) -> CGRect {
-        let base = layout.tileRect(column: stationTile.column, row: stationTile.row)
+    /// The baker's extent standing on a tile: one tile of floor with two tiles
+    /// of sprite rising off it.
+    ///
+    /// Taken by tile rather than read off the sprite, because the app layer
+    /// needs it too and may not reach into the scene's nodes (05). The phase
+    /// already says which fixture the baker is at; only the walk between them
+    /// belongs to the scene.
+    func bakerRegion(standingOn tile: RoomTile, in layout: RoomLayout) -> CGRect {
+        let base = layout.tileRect(column: tile.column, row: tile.row)
         return CGRect(
             x: base.minX,
             y: base.minY,
             width: layout.tileSize,
             height: layout.tileSize * 2
         )
+    }
+
+    /// Where the baker stands to work.
+    func stationRegion(in layout: RoomLayout) -> CGRect {
+        bakerRegion(standingOn: stationTile, in: layout)
     }
 
     /// The display case's extent in scene coordinates: the counter line it
