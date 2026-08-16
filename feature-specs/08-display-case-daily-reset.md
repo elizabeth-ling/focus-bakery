@@ -139,7 +139,7 @@ empty case was shot too, and reads as a bakery about to open rather than as
 anything lost.
 
 **Still owed a manual pass, the same debt specs 07 and 10 carry:** nobody has
-tapped the case on a device. `-bakeryRoom -displayCase` opens the sheet at
+tapped the case on a device. `-displayCase` opens the sheet at
 launch, which is how it was shot, so the `.caseTapped` path from an actual
 finger is unwitnessed — as is the deliver walk placing a treat that raises a ♦
 count from 1 to 2, which needs a real timer to reach. The case's VoiceOver

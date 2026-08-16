@@ -106,9 +106,10 @@ Three tiers exist; v1 uses two of them and keeps them physically apart.
 
 ### How the first and sixth were checked
 
-Both are "verified by looking", so `PixelProofView` exists to be looked at —
-launch with `-pixelProof` and it renders the resolved room, `00:00`, and a baker
-walking, and nothing else. It is temporary; `06` replaces it.
+Both are "verified by looking", so `PixelProofView` existed to be looked at —
+`-pixelProof` rendered the resolved room, `00:00`, and a baker walking, and
+nothing else. It was retired with `06`, which made the real room the app's root:
+the same countdown, at the same scale, is now on the main screen.
 
 Screenshots were taken at native resolution on the **iPhone SE (3rd gen)**
 (750×1334, @2x), **iPhone 16** (1179×2556, @3x) and **iPhone 16 Pro Max**

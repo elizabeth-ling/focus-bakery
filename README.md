@@ -13,8 +13,6 @@ my attempt at building an app with a soul; built because I got fed up with Fores
 test: 
 `xcodebuild test -scheme FocusBakery -destination 'platform=iOS Simulator, name=iPhone 16'`
 
-see variables/placeholders:
-`xcodebuild build`
-
-see main screen: 
-`xcodebuild build -scheme FocusBakery \ -destination 'platform='
+see the bakery:
+`xcodebuild build -scheme FocusBakery -destination 'platform=iOS Simulator, name=iPhone 16'`
+then run it from Xcode, or install the built app with `xcrun simctl install`.

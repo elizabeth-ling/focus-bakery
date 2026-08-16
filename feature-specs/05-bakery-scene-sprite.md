@@ -204,12 +204,15 @@ without art in the way.
   transient sizes (a 1×1 probe among them) while SwiftUI lays out, so the
   scene also re-checks its layout on each rendered frame and rebuilds if the
   size moved under it.
-- `BakeryRoomView` (`App/BakeryRoomView.swift`, launched with `-bakeryRoom`)
-  is the app-layer half of the boundary until `06`: it derives the model from
-  the store each second and on each session edge, and translates scene events
-  back into `acknowledgeOutcome` and notification cleanup. SpriteView's
-  `isPaused:` parameter kept the scene from ever being presented, so
-  backgrounding relies on SKView's automatic pause instead.
+- `MainScreenView` (`App/MainScreenView.swift`) is the app-layer half of the
+  boundary: it derives the model from the store each second and on each session
+  edge, and translates scene events back into `acknowledgeOutcome` and
+  notification cleanup. SpriteView's `isPaused:` parameter kept the scene from
+  ever being presented, so backgrounding relies on SKView's automatic pause
+  instead. It was `BakeryRoomView` behind a `-bakeryRoom` flag until `06` made
+  the room the app's root; the coin count it drew in bitmap text moved to
+  chrome at the same time, and the countdown moved a tile down the room to keep
+  the two text tiers apart.
 - Placeholder-first, still partly placeholder: baker, oven, display case and
   treats are pack art (the atlases already existed); floor, walls, prep
   counter and seating are colored blocks, and every pack sprite has a block

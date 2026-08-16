@@ -128,7 +128,7 @@ shortfall arithmetic right (840 − 600 = 240, 70 − 0 = 70) — by defaulting 
 confirmation state to true in a throwaway build, which is also what caught the
 sheet saying "1000" beside a page saying "1,000".
 
-`-bakeryRoom -recipeBook` opens the book at startup and `-recipeBookLocked`
+`-recipeBook` opens the book at startup and `-recipeBookLocked`
 opens it on the first locked page, since this machine still has no simulator
 tap tooling (the spec 07 gap). **Still owed the same manual pass as 07's
 sheets:** nobody has yet tapped the arrows, steppers, buy or start on a device
@@ -160,17 +160,18 @@ section prescribes for that case.
 - The locked and unlocked bottom blocks are laid into a frame of the same
   height, so turning to a locked page swaps stepper-and-start for buy-and-price
   without moving the treat above them.
-- It is presented as an overlay in `BakeryRoomView` (the spec 06 shell will
-  inherit this), over the dimmed room rather than in a system sheet — sheet
-  chrome around a drawn book is exactly the "generic picker with a skin" this
-  spec forbids. The scaffold "+" replaces the scaffold bake buttons and only
-  exists while nothing is baking.
+- It is presented as an overlay in `MainScreenView` (`BakeryRoomView` until
+  `06` made the room the root), over the dimmed room rather than in a system
+  sheet — sheet chrome around a drawn book is exactly the "generic picker with
+  a skin" this spec forbids. The "+" that opens it only exists while nothing is
+  baking, and is the room's single entry to the book (`06`).
 - The page art is a fixed 320×480 pt image from the authored `UI.atlas`
   (`tools/ui/`), not a 9-slice, so its hand-placed details never stretch. The
   treat is the pack sprite at ×8 — a whole factor, per `01`.
 - The `-recipeBook` launch argument opens the book at startup and
-  `-recipeBookLocked` opens it on the first locked page, joining `-pixelProof`
-  and `-bakeryRoom` as screenshot scaffolding.
+  `-recipeBookLocked` opens it on the first locked page, beside `-displayCase`
+  and `-settings` as screenshot scaffolding. (`-pixelProof` and `-bakeryRoom`
+  stood beside them until `06` retired both scaffolds.)
 
 ## Open questions
 
