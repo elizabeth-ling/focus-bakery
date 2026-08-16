@@ -22,11 +22,32 @@ enum ChromeFont {
 
     /// The chrome font at a whole-number magnification of its own pixels.
     ///
-    /// Fixed rather than Dynamic-Type-scaled: a fractional size puts glyph
-    /// edges between pixels. Spec 13 owns whether accessibility text sizes
-    /// override that, and it is a real trade-off, not an oversight.
+    /// Always a fixed size, because a fractional one puts glyph edges between
+    /// pixels. Responding to the reader's text size is `magnification`'s job —
+    /// it picks *which* whole number, and this still draws a whole one.
     static func pixel(_ scale: Int = PixelGrid.chromeScale) -> Font {
         .custom(name, fixedSize: CGFloat(artPixelsPerEm * scale))
+    }
+
+    /// Spec 13's Dynamic Type answer, and spec 01's open question closed: the
+    /// chrome tier responds to text size by **stepping** its magnification, not
+    /// by scaling it.
+    ///
+    /// There is exactly one step, and the bound is measured rather than chosen.
+    /// At ×3 the tray's readouts still fit their row on the narrowest supported
+    /// phone; at ×4 they do not, and the pixel grid offers nothing in between.
+    /// So chrome text grows by half again and stops, which is real support and
+    /// is also less than a low-vision reader asking for AX5 wants — the honest
+    /// trade a pixel tier makes, recorded in 13 rather than hidden here.
+    ///
+    /// Only text steps. Icons stay at `PixelGrid.chromeScale`, so a chrome art
+    /// pixel and a room art pixel remain the same physical size (01); it is the
+    /// text the reader asked to be bigger.
+    static func magnification(
+        _ base: Int = PixelGrid.chromeScale,
+        at size: DynamicTypeSize
+    ) -> Int {
+        size >= .xLarge ? base + 1 : base
     }
 
     /// Registered at runtime rather than through `UIAppFonts`, so the font
@@ -49,4 +70,28 @@ enum ChromeFont {
         }
         return true
     }()
+}
+
+/// Chrome text at whatever whole magnification the reader's text size asks for.
+///
+/// A modifier rather than a call to `ChromeFont.pixel()` because the size lives
+/// in the environment, and the surfaces that use it — the tray, the settings
+/// sheet, the display-case sheet — would otherwise each have to thread it down
+/// by hand. The recipe book deliberately does not use this (10, 13): its page is
+/// authored art at a fixed size and its text is printed on that page, so there
+/// is nothing for larger text to reflow into.
+private struct PixelFont: ViewModifier {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    let base: Int
+
+    func body(content: Content) -> some View {
+        content.font(ChromeFont.pixel(ChromeFont.magnification(base, at: dynamicTypeSize)))
+    }
+}
+
+extension View {
+    func pixelFont(_ base: Int = PixelGrid.chromeScale) -> some View {
+        modifier(PixelFont(base: base))
+    }
 }

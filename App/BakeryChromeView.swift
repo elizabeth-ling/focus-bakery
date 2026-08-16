@@ -79,7 +79,7 @@ struct BakeryChromeView: View {
                 // a blob. The tray settles it for good — flat leather is not
                 // busy art, and there is nothing left to hold the text over.
                 Text(value)
-                    .font(ChromeFont.pixel())
+                    .pixelFont()
                     .foregroundStyle(PixelInk.cream)
             }
         }

@@ -73,12 +73,13 @@ struct SettingsSheetView: View {
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
             Text("Settings")
-                .font(ChromeFont.pixel())
+                .pixelFont()
                 .foregroundStyle(PixelInk.heading)
+                .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 12)
             Button("Done", action: onDismiss)
-                .font(ChromeFont.pixel())
+                .pixelFont()
                 .foregroundStyle(PixelInk.heading)
         }
     }
@@ -106,7 +107,7 @@ struct SettingsSheetView: View {
                     displayedComponents: .hourAndMinute
                 ) {
                     Text("Remind me at")
-                        .font(ChromeFont.pixel())
+                        .pixelFont()
                         .foregroundStyle(PixelInk.body)
                 }
             }
@@ -118,7 +119,7 @@ struct SettingsSheetView: View {
     private func toggle(_ title: String, isOn: Binding<Bool>) -> some View {
         Toggle(isOn: isOn) {
             Text(title)
-                .font(ChromeFont.pixel())
+                .pixelFont()
                 .foregroundStyle(PixelInk.heading)
         }
         .tint(PixelInk.body)
@@ -126,7 +127,7 @@ struct SettingsSheetView: View {
 
     private func note(_ text: String) -> some View {
         Text(text)
-            .font(ChromeFont.pixel())
+            .pixelFont()
             .foregroundStyle(PixelInk.body)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -137,15 +138,15 @@ struct SettingsSheetView: View {
     private var permissionNotice: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Alerts are off")
-                .font(ChromeFont.pixel())
+                .pixelFont()
                 .foregroundStyle(PixelInk.heading)
             Text("We can't tell you when a bake is done. The timer runs either way.")
-                .font(ChromeFont.pixel())
+                .pixelFont()
                 .foregroundStyle(PixelInk.body)
                 .fixedSize(horizontal: false, vertical: true)
             if let url = URL(string: UIApplication.openSettingsURLString) {
                 Link("Open iOS Settings", destination: url)
-                    .font(ChromeFont.pixel())
+                    .pixelFont()
                     .foregroundStyle(PixelInk.heading)
             }
         }
@@ -158,7 +159,7 @@ struct SettingsSheetView: View {
     private var attribution: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Focus Bakery \(Self.version)")
-                .font(ChromeFont.pixel())
+                .pixelFont()
                 .foregroundStyle(PixelInk.heading)
             credit("Art: Modern Interiors by LimeZu", "https://limezu.itch.io")
             credit("Font: PxPlus IBM CGA by VileR, CC BY-SA 4.0", "https://int10h.org/oldschool-pc-fonts/")
@@ -171,7 +172,7 @@ struct SettingsSheetView: View {
         if let url = URL(string: address) {
             Link(destination: url) {
                 Text(text)
-                    .font(ChromeFont.pixel())
+                    .pixelFont()
                     .foregroundStyle(PixelInk.body)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)

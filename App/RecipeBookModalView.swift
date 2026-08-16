@@ -8,6 +8,13 @@ import SwiftUI
 /// start, one purchase, or the dismissal. Every string in it is the chrome TTF —
 /// the modal is SwiftUI chrome, so that is its single text tier (spec 01).
 ///
+/// It is the one chrome surface that does **not** take Dynamic Type (13). The
+/// page is authored art at a fixed 320×480 with its content inset onto the drawn
+/// paper, so text a size larger has nowhere to reflow to — "Start baking" alone
+/// outgrows the page's content column at the next whole step. It is the bound
+/// spec 13 records, and lifting it means a page that is laid out rather than
+/// drawn, which is spec 10's decision and not this one's.
+///
 /// The one thing it reaches for is the feedback player (12), because paging and
 /// stepping are felt here and nowhere else. It still decides nothing: a cue is a
 /// noise, not state, and threading two closures out for it would be plumbing

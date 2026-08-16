@@ -34,20 +34,23 @@ struct DisplayCaseSheetView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
+                // Wraps rather than truncates: at the largest text size the
+                // title and "Done" no longer share a line on the narrowest
+                // phone, and a clipped heading is the failure spec 13 names.
                 Text("Today's Bakes")
-                    .font(ChromeFont.pixel())
+                    .pixelFont()
                     .foregroundStyle(PixelInk.heading)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 12)
                 Button("Done", action: onDismiss)
-                    .font(ChromeFont.pixel())
+                    .pixelFont()
                     .foregroundStyle(PixelInk.heading)
             }
             .accessibilityAddTraits(.isHeader)
 
             if !day.isEmpty {
                 Text(day.totalCount == 1 ? "1 treat today" : "\(day.totalCount) treats today")
-                    .font(ChromeFont.pixel())
+                    .pixelFont()
                     .foregroundStyle(PixelInk.body)
             }
         }
@@ -77,12 +80,12 @@ struct DisplayCaseSheetView: View {
             PixelImage(name: recipe.spriteName, atlas: .treats)
                 .frame(width: 64)
             Text(recipe.name)
-                .font(ChromeFont.pixel())
+                .pixelFont()
                 .foregroundStyle(PixelInk.heading)
                 .multilineTextAlignment(.leading)
             Spacer(minLength: 8)
             Text("x\(tally.count)")
-                .font(ChromeFont.pixel())
+                .pixelFont()
                 .foregroundStyle(PixelInk.body)
         }
         .padding(.vertical, 14)
@@ -100,10 +103,10 @@ struct DisplayCaseSheetView: View {
         VStack(spacing: 12) {
             Spacer(minLength: 20)
             Text("The case is clean and the oven is warm.")
-                .font(ChromeFont.pixel())
+                .pixelFont()
                 .foregroundStyle(PixelInk.heading)
             Text("Today's bakes will fill it up.")
-                .font(ChromeFont.pixel())
+                .pixelFont()
                 .foregroundStyle(PixelInk.body)
             Spacer(minLength: 20)
         }
