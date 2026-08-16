@@ -170,3 +170,10 @@ art, and `14`'s licence forbids redistributing it.
     because a fractional point size puts glyph edges between pixels. `13` owns
     whether accessibility sizes override that. It is a real trade-off, and it is
     the one open question this spec hands forward rather than closes.
+  - **`13` has since closed it: they override, by stepping.** Chrome text
+    responds to text size by moving to the next whole magnification rather than
+    scaling fractionally, so every glyph edge still lands on a pixel. At the
+    default size nothing changes and a chrome pixel is still a room pixel; above
+    it, only *text* steps — icons keep the room's magnification, so the mismatch
+    is confined to the thing the reader asked to be bigger. See `13` for the
+    bound and why it is one step.
