@@ -176,8 +176,6 @@ struct RecipeBookModalView: View {
                     .padding(.top, 16)
             } else {
                 purchaseButton
-                balance
-                    .padding(.top, 8)
             }
         }
         .frame(height: 108, alignment: .top)
@@ -247,14 +245,6 @@ struct RecipeBookModalView: View {
         }
         .buttonStyle(PressedPixelButtonStyle())
         .accessibilityLabel("Buy for \(entry.recipe.price) coins")
-    }
-
-    private var balance: some View {
-        Text(entry.isAffordable
-             ? "You have \(coinBalance) coins"
-             : "\(entry.coinsShort) more to go")
-            .font(ChromeFont.pixel())
-            .foregroundStyle(PixelInk.body)
     }
 
     /// Numbers are formatted rather than interpolated raw: the page's own
