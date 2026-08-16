@@ -113,7 +113,7 @@ struct MainScreenView: View {
                     .position(x: layout.scene.midX, y: layout.scene.midY)
                 chrome(deliverOwed: deliverOwed, layout: layout)
                 if isShowingRecipeBook {
-                    recipeBook
+                    recipeBook(layout: layout)
                         .zIndex(1)
                         .transition(reduceMotion
                                     ? .opacity
@@ -327,12 +327,13 @@ struct MainScreenView: View {
     /// Spec 10's modal, fed and drained here so the boundary stays the same as
     /// the scene's: the book reads the store through this view and hands back
     /// one event.
-    private var recipeBook: some View {
+    private func recipeBook(layout: ChromeLayout) -> some View {
         // Read in the body pass so the page re-prices itself the moment a
         // purchase lands, which is what turns the bought page startable in
         // place (the spec 03 lesson).
         let book = store.recipeBook
         return RecipeBookModalView(
+            layout: layout,
             entries: book,
             coinBalance: store.progress.wallet.coinBalance,
             initialRecipeID: openingPage(of: book),

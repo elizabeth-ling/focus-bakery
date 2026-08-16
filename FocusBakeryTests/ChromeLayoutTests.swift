@@ -179,6 +179,41 @@ struct ChromeLayoutTests {
         }
     }
 
+    /// The recipe book's way out moved off the page and onto the screen (10),
+    /// which is only an improvement if the band it moved into is really empty:
+    /// below the tray, above the page, and wide enough to be tapped. The page is
+    /// authored art at a fixed size, so "the book still fits underneath" is a
+    /// measurement the smallest phone can fail.
+    @Test("The modal's close control clears both the tray and the page")
+    func theCloseControlHasABandOfItsOwn() {
+        for phone in Self.phones {
+            let chrome = phone.chrome
+            let close = chrome.modalClose
+            let stage = chrome.modalStage
+
+            #expect(close.width >= ChromeLayout.minimumTarget, "\(phone.name)")
+            #expect(close.height >= ChromeLayout.minimumTarget, "\(phone.name)")
+            #expect(close.minY >= chrome.trayEdge.maxY,
+                    "\(phone.name): the close control is under the tray's shadow")
+            #expect(close.maxX <= phone.size.width, "\(phone.name): the close control runs off screen")
+            #expect(close.maxY <= phone.size.height - phone.safeAreaBottom, "\(phone.name)")
+            #expect(!close.intersects(stage), "\(phone.name): the close control sits on the modal")
+
+            // Where `RecipeBookModalView` puts the page: centred in the stage.
+            let size = RecipeBookModalView.pageSize
+            let page = CGRect(
+                x: stage.midX - size.width / 2,
+                y: stage.midY - size.height / 2,
+                width: size.width,
+                height: size.height
+            )
+            #expect(stage.contains(page),
+                    "\(phone.name): the \(size) page does not fit the stage \(stage)")
+            #expect(!close.intersects(page),
+                    "\(phone.name): the close control \(close) covers the page \(page)")
+        }
+    }
+
     @Test("A scene too small to seat a room still resolves usable chrome")
     func degenerateScenesStillResolve() {
         let chrome = ChromeLayout(size: CGSize(width: 200, height: 300), safeAreaTop: 20, safeAreaBottom: 0)

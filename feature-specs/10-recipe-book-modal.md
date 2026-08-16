@@ -168,6 +168,13 @@ section prescribes for that case.
 - The page art is a fixed 320×480 pt image from the authored `UI.atlas`
   (`tools/ui/`), not a 9-slice, so its hand-placed details never stretch. The
   treat is the pack sprite at ×8 — a whole factor, per `01`.
+- **The way out is off the page**, at the trailing edge under the tray
+  (`ChromeLayout.modalClose`). It sat in the page's top-left corner first, which
+  is drawn cover, ribbon and corner protector — a control on the binding. Moving
+  it out costs the page nothing and buys back the inset it was spending, and the
+  layout now keeps a band clear between the tray and the page for it: the book
+  is centred in `modalStage`, which is everything below that control, so the two
+  cannot overlap on any supported phone.
 - The `-recipeBook` launch argument opens the book at startup and
   `-recipeBookLocked` opens it on the first locked page, beside `-displayCase`
   and `-settings` as screenshot scaffolding. (`-pixelProof` and `-bakeryRoom`

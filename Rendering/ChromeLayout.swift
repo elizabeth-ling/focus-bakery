@@ -43,6 +43,18 @@ struct ChromeLayout: Equatable {
     /// The readout row inside the tray, below the status bar.
     let content: CGRect
 
+    /// The way out of a full-screen modal (10): a target at the trailing edge,
+    /// clear of the tray rather than drawn on the modal itself. The recipe book
+    /// is authored art at a fixed size, so a control inside it spends page it
+    /// does not have — and one outside it lands in the same place whatever the
+    /// modal under it happens to be.
+    let modalClose: CGRect
+
+    /// What is left for a modal once the tray and that control have taken their
+    /// bands: everything below `modalClose`, which is where the book's page is
+    /// centred so the two cannot overlap.
+    let modalStage: CGRect
+
     /// What is left for the room, and the size the scene is laid out at.
     let scene: CGRect
 
@@ -78,6 +90,19 @@ struct ChromeLayout: Equatable {
             y: tray.maxY,
             width: size.width,
             height: max(0, size.height - tray.maxY)
+        )
+
+        modalClose = CGRect(
+            x: size.width - inset - Self.minimumTarget,
+            y: tray.maxY + inset,
+            width: Self.minimumTarget,
+            height: Self.minimumTarget
+        )
+        modalStage = CGRect(
+            x: 0,
+            y: modalClose.maxY,
+            width: size.width,
+            height: max(0, size.height - modalClose.maxY)
         )
 
         let layout = RoomLayout(fitting: scene.size)

@@ -22,6 +22,12 @@ import SwiftUI
 struct RecipeBookModalView: View {
     @Environment(BakeryFeedback.self) private var feedback
 
+    /// The page as `build_ui.py` draws it, magnified: 160×240 art pixels at the
+    /// chrome's scale. Named rather than inlined because it is what the layout
+    /// has to leave room for below the close control.
+    static let pageSize = CGSize(width: 320, height: 480)
+
+    let layout: ChromeLayout
     let entries: [RecipeBookEntry]
     let coinBalance: Int
     let onStart: (RecipeID, Int) -> Void
@@ -33,6 +39,7 @@ struct RecipeBookModalView: View {
     @State private var isConfirmingPurchase = false
 
     init(
+        layout: ChromeLayout,
         entries: [RecipeBookEntry],
         coinBalance: Int,
         initialRecipeID: RecipeID,
@@ -41,6 +48,7 @@ struct RecipeBookModalView: View {
         onPurchase: @escaping (RecipeID) -> Void,
         onDismiss: @escaping () -> Void
     ) {
+        self.layout = layout
         self.entries = entries
         self.coinBalance = coinBalance
         self.onStart = onStart
@@ -83,6 +91,13 @@ struct RecipeBookModalView: View {
                 .onTapGesture(perform: onDismiss)
                 .accessibilityHidden(true)
             page
+                .position(x: layout.modalStage.midX, y: layout.modalStage.midY)
+            // Off the page and onto the screen: the book's own top-left corner
+            // is drawn cover and ribbon, so a control there sat on the binding.
+            // It lives in the band the layout keeps clear between the tray and
+            // the page, at the trailing edge where a dismissal is reached for.
+            closeButton
+                .position(x: layout.modalClose.midX, y: layout.modalClose.midY)
         }
         .accessibilityAddTraits(.isModal)
         .confirmationDialog(
@@ -109,10 +124,6 @@ struct RecipeBookModalView: View {
         ZStack {
             PixelImage(name: "book_page", atlas: .ui)
             VStack(spacing: 0) {
-                HStack {
-                    closeButton
-                    Spacer()
-                }
                 title
                     .padding(.top, 8)
                 // Two spacers rather than one, so the slack falls either side
@@ -127,7 +138,7 @@ struct RecipeBookModalView: View {
             // the ribbon and the page-stack edges.
             .padding(EdgeInsets(top: 26, leading: 36, bottom: 52, trailing: 44))
         }
-        .frame(width: 320, height: 480)
+        .frame(width: Self.pageSize.width, height: Self.pageSize.height)
     }
 
     private var title: some View {
@@ -279,7 +290,10 @@ struct RecipeBookModalView: View {
     private var closeButton: some View {
         Button(action: onDismiss) {
             PixelImage(name: "button_close", atlas: .ui)
-                .frame(width: 44, height: 44, alignment: .topLeading)
+                .frame(
+                    width: ChromeLayout.minimumTarget,
+                    height: ChromeLayout.minimumTarget
+                )
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressedPixelButtonStyle())
