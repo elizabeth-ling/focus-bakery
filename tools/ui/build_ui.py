@@ -42,13 +42,19 @@ PALETTE = {
     "o": (0xED, 0x93, 0x1E),  # brass shade
     "R": (0xD9, 0x32, 0x32),  # ribbon
     "r": (0xA8, 0x2B, 0x2D),  # ribbon shade
+    # The tray's shadow on the room (06). The only translucent entries here, and
+    # warm rather than neutral -- a grey shadow over the pack's floor art reads
+    # as a rendering artefact rather than as something the tray is casting.
+    "N": (0x38, 0x1A, 0x08, 0x8C),  # shadow, against the tray
+    "n": (0x38, 0x1A, 0x08, 0x40),  # shadow, falling away
 }
 
 
 def rgba(key):
     if key == ".":
         return (0, 0, 0, 0)
-    return PALETTE[key] + (255,)
+    value = PALETTE[key]
+    return value if len(value) == 4 else value + (255,)
 
 
 class Canvas:
@@ -309,6 +315,23 @@ def build_stop_button():
     return "button_stop", canvas
 
 
+def build_tray_edge():
+    """The bottom edge of the tray that runs across the top of the screen (06).
+
+    Only the edge is art. The tray's field is a flat fill, because the tray is
+    as wide as the screen and a screen is not a whole number of art pixels
+    across -- so the strip is stretched to fit, which is exact only because
+    every column of it is identical. Read downwards: the leather catches the
+    light as it rolls over the brass rail, an ink line finishes the tray, and
+    two rows of shadow fall past it onto the room."""
+    rows = ["L", "K", "G", "g", "g", "o", "K", "N", "n"]
+    width = 8
+    canvas = Canvas(width, len(rows))
+    for y, key in enumerate(rows):
+        canvas.hline(0, width - 1, y, key)
+    return "tray_edge", canvas
+
+
 def brass_corner(canvas, cx, cy, dx, dy):
     """A brass corner protector: an L of `size` px hugging the cover corner at
     (cx, cy), extending inwards along (dx, dy)."""
@@ -400,6 +423,7 @@ def build_all():
         build_buy_button(),
         build_bake_button(),
         build_stop_button(),
+        build_tray_edge(),
         build_stamped("lock_gold", LOCK_ROWS),
         build_stamped("coin", COIN_ROWS),
         build_stamped("icon_flame", FLAME_ROWS),
