@@ -4,35 +4,70 @@ import Testing
 
 @Suite("The recipe-book modal")
 struct RecipeBookModalTests {
-    private let cookieAndCroissant = [
-        RecipeCatalog.recipe(for: .chocolateChipCookie),
-        RecipeCatalog.recipe(for: .croissant),
-    ]
-
-    @Test("Arrows cycle through the unlocked recipes and wrap at both ends")
-    func cyclingWraps() {
-        let unlocked = cookieAndCroissant
-        #expect(RecipeBookModalView.cycled(from: .chocolateChipCookie, by: 1, in: unlocked) == .croissant)
-        #expect(RecipeBookModalView.cycled(from: .croissant, by: 1, in: unlocked) == .chocolateChipCookie)
-        #expect(RecipeBookModalView.cycled(from: .chocolateChipCookie, by: -1, in: unlocked) == .croissant)
+    /// The book as the store hands it over: the whole catalogue, priced against
+    /// a balance, with `unlocked` owned outright.
+    private func book(unlocked: Set<RecipeID>, balance: Int = 0) -> [RecipeBookEntry] {
+        RecipeCatalog.all.map { recipe in
+            RecipeBookEntry(
+                recipe: recipe,
+                isUnlocked: unlocked.contains(recipe.id),
+                coinsShort: unlocked.contains(recipe.id) ? 0 : max(0, recipe.price - balance)
+            )
+        }
     }
 
-    @Test("Cycling never leaves the unlocked set, whatever it is asked from")
-    func cyclingStaysUnlocked() {
-        let unlocked = cookieAndCroissant
-        let unlockedIDs = Set(unlocked.map(\.id))
+    @Test("Arrows cycle through every page and wrap at both ends")
+    func cyclingWraps() throws {
+        let pages = book(unlocked: [.chocolateChipCookie])
+        let first = try #require(pages.first?.id)
+        let last = try #require(pages.last?.id)
+
+        #expect(RecipeBookModalView.cycled(from: first, by: 1, in: pages) == pages[1].id)
+        #expect(RecipeBookModalView.cycled(from: last, by: 1, in: pages) == first)
+        #expect(RecipeBookModalView.cycled(from: first, by: -1, in: pages) == last)
+    }
+
+    /// The reversal spec 10 records: the book is browsed whole, so a fresh
+    /// install with one unlock still has five pages to turn to.
+    @Test("Cycling reaches the locked recipes, not just the unlocked ones")
+    func cyclingReachesLockedRecipes() {
+        let pages = book(unlocked: [.chocolateChipCookie])
+        var seen: Set<RecipeID> = []
+        var id = RecipeCatalog.starter
+
+        for _ in RecipeCatalog.all.indices {
+            seen.insert(id)
+            id = RecipeBookModalView.cycled(from: id, by: 1, in: pages)
+        }
+
+        #expect(seen == Set(RecipeCatalog.all.map(\.id)))
+        // A full lap comes home rather than drifting.
+        #expect(id == RecipeCatalog.starter)
+    }
+
+    @Test("Cycling never leaves the book, whatever page it is asked from")
+    func cyclingStaysInTheBook() {
+        let pages = book(unlocked: [.chocolateChipCookie, .croissant])
+        let ids = Set(pages.map(\.id))
         for id in RecipeID.allCases {
             for delta in [-1, 1] {
-                #expect(unlockedIDs.contains(RecipeBookModalView.cycled(from: id, by: delta, in: unlocked)))
+                #expect(ids.contains(RecipeBookModalView.cycled(from: id, by: delta, in: pages)))
             }
         }
     }
 
-    @Test("With a single unlocked recipe, cycling stays put")
-    func cyclingWithOneRecipe() {
-        let onlyCookie = [RecipeCatalog.recipe(for: .chocolateChipCookie)]
-        #expect(RecipeBookModalView.cycled(from: .chocolateChipCookie, by: 1, in: onlyCookie) == .chocolateChipCookie)
-        #expect(RecipeBookModalView.cycled(from: .chocolateChipCookie, by: -1, in: onlyCookie) == .chocolateChipCookie)
+    @Test("A locked page carries the price and the shortfall the buy button shows")
+    func lockedPageCarriesPriceAndShortfall() throws {
+        let pages = book(unlocked: [.chocolateChipCookie], balance: 100)
+
+        let croissant = try #require(pages.first { $0.id == .croissant })
+        #expect(croissant.isUnlocked == false)
+        #expect(croissant.recipe.price == Economy.price(for: .croissant))
+        #expect(croissant.isAffordable)
+
+        let cake = try #require(pages.first { $0.id == .cake })
+        #expect(cake.isAffordable == false)
+        #expect(cake.coinsShort == Economy.price(for: .cake) - 100)
     }
 }
 
@@ -61,5 +96,28 @@ struct RecipeBookModalStartTests {
 
         #expect(store.startSession(recipeID: .croissant, durationMinutes: 25) == nil)
         #expect(store.session.active == nil)
+    }
+
+    /// Buying is what turns the page the user is already looking at from a
+    /// price into a stepper: the modal holds the recipe, and the entry it reads
+    /// for that recipe flips to unlocked without the book being reopened.
+    @Test("Buying the page you are on unlocks it and makes it startable in place")
+    func purchasingUnlocksThePageInPlace() throws {
+        let clock = TestClock(instant(2026, 8, 15, 9))
+        let store = BakeryStore(directory: makeTemporaryDirectory(), clock: clock.wallClock)
+
+        store.startSession(recipeID: .chocolateChipCookie, durationMinutes: 90)
+        clock.advance(minutes: 90)
+        store.finishActiveSession(as: .completed)
+
+        let before = try #require(store.recipeBook.first { $0.id == .croissant })
+        #expect(before.isUnlocked == false)
+        #expect(store.startSession(recipeID: .croissant, durationMinutes: 25) == nil)
+
+        #expect(store.purchase(.croissant) == .bought)
+
+        let after = try #require(store.recipeBook.first { $0.id == .croissant })
+        #expect(after.isUnlocked)
+        #expect(store.startSession(recipeID: .croissant, durationMinutes: 25)?.recipeID == .croissant)
     }
 }

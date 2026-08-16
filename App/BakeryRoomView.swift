@@ -32,9 +32,11 @@ struct BakeryRoomView: View {
     @State private var isConfirmingCancel = false
     @State private var isShowingOutcome = false
     /// Openable at launch so the modal can be screenshotted without tap
-    /// tooling, the same way `-pixelProof` serves spec 01.
-    @State private var isShowingRecipeBook =
-        ProcessInfo.processInfo.arguments.contains("-recipeBook")
+    /// tooling, the same way `-pixelProof` serves spec 01. `-recipeBookLocked`
+    /// opens it on the first locked page instead, which is the other state
+    /// worth a screenshot and the one no launch can otherwise reach.
+    @State private var isShowingRecipeBook = ProcessInfo.processInfo.arguments
+        .contains { $0 == "-recipeBook" || $0 == "-recipeBookLocked" }
 
     private let settings = Settings()
 
@@ -134,18 +136,34 @@ struct BakeryRoomView: View {
     /// the scene's: the book reads the store through this view and hands back
     /// one event.
     private var recipeBook: some View {
-        let lastUsed = settings.lastBakeRecipeID
+        // Read in the body pass so the page re-prices itself the moment a
+        // purchase lands, which is what turns the bought page startable in
+        // place (the spec 03 lesson).
+        let book = store.recipeBook
         return RecipeBookModalView(
-            unlockedRecipes: store.unlockedRecipes,
-            initialRecipeID: lastUsed.flatMap { store.isUnlocked($0) ? $0 : nil }
-                ?? RecipeCatalog.starter,
+            entries: book,
+            coinBalance: store.progress.wallet.coinBalance,
+            initialRecipeID: openingPage(of: book),
             initialMinutes: settings.lastBakeDurationMinutes,
             onStart: { recipeID, minutes in
                 isShowingRecipeBook = false
                 start(recipeID: recipeID, minutes: minutes)
             },
+            onPurchase: { store.purchase($0) },
             onDismiss: { isShowingRecipeBook = false }
         )
+    }
+
+    /// The book opens on what the user last baked (spec 10), or on the starter
+    /// before there is one — and on the first locked page under the screenshot
+    /// flag, which is the only way to reach that state without tap tooling.
+    private func openingPage(of book: [RecipeBookEntry]) -> RecipeID {
+        if ProcessInfo.processInfo.arguments.contains("-recipeBookLocked"),
+           let locked = book.first(where: { !$0.isUnlocked }) {
+            return locked.id
+        }
+        return settings.lastBakeRecipeID.flatMap { store.isUnlocked($0) ? $0 : nil }
+            ?? RecipeCatalog.starter
     }
 
     /// App state → scene model, the one place the translation happens.

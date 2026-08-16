@@ -1,29 +1,36 @@
 import SwiftUI
 
 /// The recipe-book timer modal (spec 10): grandma's book over the dimmed room,
-/// arrows turning pages between unlocked recipes, a duration stepper, and one
-/// start action.
+/// arrows turning pages through the whole catalogue, and one action per page —
+/// a duration to start on a recipe you own, a price to buy on one you do not.
 ///
-/// A pure view: the caller passes the unlocked recipes and where to open, and
-/// receives the start or the dismissal. Every string in it is the chrome TTF —
+/// A pure view: the caller passes the book and where to open, and receives one
+/// start, one purchase, or the dismissal. Every string in it is the chrome TTF —
 /// the modal is SwiftUI chrome, so that is its single text tier (spec 01).
 struct RecipeBookModalView: View {
-    let unlockedRecipes: [Recipe]
+    let entries: [RecipeBookEntry]
+    let coinBalance: Int
     let onStart: (RecipeID, Int) -> Void
+    let onPurchase: (RecipeID) -> Void
     let onDismiss: () -> Void
 
     @State private var recipeID: RecipeID
     @State private var minutes: Int
+    @State private var isConfirmingPurchase = false
 
     init(
-        unlockedRecipes: [Recipe],
+        entries: [RecipeBookEntry],
+        coinBalance: Int,
         initialRecipeID: RecipeID,
         initialMinutes: Int,
         onStart: @escaping (RecipeID, Int) -> Void,
+        onPurchase: @escaping (RecipeID) -> Void,
         onDismiss: @escaping () -> Void
     ) {
-        self.unlockedRecipes = unlockedRecipes
+        self.entries = entries
+        self.coinBalance = coinBalance
         self.onStart = onStart
+        self.onPurchase = onPurchase
         self.onDismiss = onDismiss
         _recipeID = State(initialValue: initialRecipeID)
         // Clamped here as well as at the source: this is the input layer the
@@ -31,17 +38,28 @@ struct RecipeBookModalView: View {
         _minutes = State(initialValue: BakeDuration.clamped(initialMinutes))
     }
 
-    /// Steps through the unlocked recipes only, wrapping at either end — with
-    /// two recipes both arrows still work, they just meet.
-    static func cycled(from current: RecipeID, by delta: Int, in unlocked: [Recipe]) -> RecipeID {
-        guard !unlocked.isEmpty else { return current }
-        let index = unlocked.firstIndex { $0.id == current } ?? 0
-        let count = unlocked.count
-        return unlocked[((index + delta) % count + count) % count].id
+    /// Steps through every page, locked ones included, wrapping at either end.
+    /// A locked recipe is a page of the book like any other — a goal you cannot
+    /// browse to is not a goal (specs 07, 10).
+    static func cycled(from current: RecipeID, by delta: Int, in book: [RecipeBookEntry]) -> RecipeID {
+        guard !book.isEmpty else { return current }
+        let index = book.firstIndex { $0.id == current } ?? 0
+        let count = book.count
+        return book[((index + delta) % count + count) % count].id
     }
 
-    private var recipe: Recipe {
-        unlockedRecipes.first { $0.id == recipeID } ?? RecipeCatalog.recipe(for: recipeID)
+    /// The page being shown. The fallback keeps this a total function for a
+    /// caller that hands over a book the current recipe is not in; the store's
+    /// `recipeBook` is always the whole catalogue, so it does not arise there.
+    private var entry: RecipeBookEntry {
+        entries.first { $0.id == recipeID } ?? {
+            let recipe = RecipeCatalog.recipe(for: recipeID)
+            return RecipeBookEntry(
+                recipe: recipe,
+                isUnlocked: false,
+                coinsShort: max(0, recipe.price - coinBalance)
+            )
+        }()
     }
 
     var body: some View {
@@ -53,6 +71,24 @@ struct RecipeBookModalView: View {
             page
         }
         .accessibilityAddTraits(.isModal)
+        .confirmationDialog(
+            entry.isAffordable ? "Buy this recipe?" : "Not enough coins",
+            isPresented: $isConfirmingPurchase,
+            titleVisibility: .visible
+        ) {
+            // Spec 07 asks that spending earned currency feel deliberate, so the
+            // buy is confirmed rather than done on the first tap, and a short
+            // balance opens this same sheet to be *explained* rather than
+            // leaving a dead control on the page.
+            if entry.isAffordable {
+                Button("Bake it forever") { onPurchase(recipeID) }
+                Button("Not yet", role: .cancel) {}
+            } else {
+                Button("OK", role: .cancel) {}
+            }
+        } message: {
+            Text(purchaseExplanation)
+        }
     }
 
     private var page: some View {
@@ -70,11 +106,7 @@ struct RecipeBookModalView: View {
                 caption
                     .padding(.top, 10)
                 Spacer(minLength: 8)
-                durationRow
-                payout
-                    .padding(.top, 8)
-                startButton
-                    .padding(.top, 16)
+                controls
             }
             // Insets place the content on the drawn page, clear of the cover,
             // the ribbon and the page-stack edges.
@@ -84,7 +116,7 @@ struct RecipeBookModalView: View {
     }
 
     private var title: some View {
-        Text(recipe.name)
+        Text(entry.recipe.name)
             .font(ChromeFont.pixel())
             .foregroundStyle(BookInk.heading)
             .multilineTextAlignment(.center)
@@ -97,48 +129,71 @@ struct RecipeBookModalView: View {
         HStack(spacing: 0) {
             pageArrow("arrow_left", by: -1, label: "Previous recipe")
             Spacer(minLength: 0)
-            PixelImage(name: recipe.spriteName, atlas: .treats, scale: 8)
-                .accessibilityLabel(recipe.name)
+            treat
             Spacer(minLength: 0)
             pageArrow("arrow_right", by: 1, label: "Next recipe")
         }
     }
 
-    /// With one unlocked recipe there are no pages to turn, so the arrows are
-    /// not drawn at all — absent reads as intentional where disabled reads as
-    /// broken (spec 11). The caption below carries the intent.
-    @ViewBuilder
-    private func pageArrow(_ name: String, by delta: Int, label: String) -> some View {
-        if unlockedRecipes.count > 1 {
-            Button {
-                recipeID = Self.cycled(from: recipeID, by: delta, in: unlockedRecipes)
-            } label: {
-                PixelImage(name: name, atlas: .ui)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
+    /// A locked treat is dimmed and drained of its colour under a gold padlock:
+    /// recognisably the thing you are working towards, unmistakably not yours
+    /// yet. The filters are per-pixel, so the art stays on its grid.
+    private var treat: some View {
+        ZStack {
+            PixelImage(name: entry.recipe.spriteName, atlas: .treats, scale: 8)
+                .saturation(entry.isUnlocked ? 1 : 0.45)
+                .colorMultiply(entry.isUnlocked ? .white : Color(white: 0.72))
+            if !entry.isUnlocked {
+                PixelImage(name: "lock_gold", atlas: .ui, scale: 4)
             }
-            .buttonStyle(PressedPixelButtonStyle())
-            .accessibilityLabel(label)
-        } else {
-            Color.clear.frame(width: 44, height: 44)
         }
+        .accessibilityElement()
+        .accessibilityLabel(entry.isUnlocked ? entry.recipe.name : "\(entry.recipe.name), locked")
+    }
+
+    private func pageArrow(_ name: String, by delta: Int, label: String) -> some View {
+        Button {
+            recipeID = Self.cycled(from: recipeID, by: delta, in: entries)
+        } label: {
+            PixelImage(name: name, atlas: .ui)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressedPixelButtonStyle())
+        .accessibilityLabel(label)
     }
 
     private var caption: some View {
-        Group {
-            if unlockedRecipes.count > 1,
-               let index = unlockedRecipes.firstIndex(where: { $0.id == recipeID }) {
-                Text("Page \(index + 1) of \(unlockedRecipes.count)")
+        Text(pageNumber)
+            .font(ChromeFont.pixel())
+            .foregroundStyle(BookInk.faded)
+            .frame(height: 20)
+    }
+
+    private var pageNumber: String {
+        guard let index = entries.firstIndex(where: { $0.id == recipeID }) else { return "" }
+        return "Page \(index + 1) of \(entries.count)"
+    }
+
+    /// The bottom of the page: the stepper and the start on a recipe you own,
+    /// the price and the buy on one you do not. Both variants sit in a block of
+    /// the same height, so turning to a locked page swaps the controls without
+    /// shifting the treat above them.
+    private var controls: some View {
+        VStack(spacing: 0) {
+            if entry.isUnlocked {
+                durationRow
+                payout
+                    .padding(.top, 8)
+                startButton
+                    .padding(.top, 16)
             } else {
-                Text("Earn coins to\nfill the book")
+                purchaseButton
+                balance
+                    .padding(.top, 8)
             }
         }
-        .font(ChromeFont.pixel())
-        .foregroundStyle(BookInk.faded)
-        .multilineTextAlignment(.center)
-        // Two lines reserved either way, so the one-page book and the full
-        // one lay the page out identically.
-        .frame(height: 40)
+        .frame(height: 136, alignment: .top)
     }
 
     private var durationRow: some View {
@@ -193,6 +248,48 @@ struct RecipeBookModalView: View {
             }
         }
         .buttonStyle(PressedPixelButtonStyle())
+    }
+
+    /// Brass, like the lock over the treat and the coin on its face: gold is
+    /// what a locked page is worth, and leather is what starts a bake.
+    private var purchaseButton: some View {
+        Button {
+            isConfirmingPurchase = true
+        } label: {
+            ZStack {
+                PixelImage(name: "button_buy", atlas: .ui)
+                HStack(spacing: 8) {
+                    Text("Buy for")
+                    PixelImage(name: "coin", atlas: .ui)
+                    Text("\(entry.recipe.price)")
+                }
+                .font(ChromeFont.pixel())
+                .foregroundStyle(BookInk.heading)
+            }
+        }
+        .buttonStyle(PressedPixelButtonStyle())
+        .accessibilityLabel("Buy for \(entry.recipe.price) coins")
+    }
+
+    private var balance: some View {
+        Text(entry.isAffordable
+             ? "You have \(coinBalance) coins"
+             : "\(entry.coinsShort) more to go")
+            .font(ChromeFont.pixel())
+            .foregroundStyle(BookInk.body)
+    }
+
+    /// Numbers are formatted rather than interpolated raw: the page's own
+    /// `Text` groups them by locale, and a sheet that said "1000" beside a page
+    /// saying "1,000" would look like two different amounts.
+    private var purchaseExplanation: String {
+        let opening = """
+            \(entry.recipe.name) costs \(entry.recipe.price.formatted()) coins. \
+            You have \(coinBalance.formatted())
+            """
+        return entry.isAffordable
+            ? "\(opening)."
+            : "\(opening) — \(entry.coinsShort.formatted()) more to go."
     }
 
     private var closeButton: some View {
