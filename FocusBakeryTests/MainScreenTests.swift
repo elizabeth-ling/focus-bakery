@@ -34,14 +34,22 @@ struct MainScreenTests {
         #expect(MainScreenAction.resolved(for: .burned, isCelebrating: false) == .start)
     }
 
-    /// Spec 06's gotcha, made checkable: chrome floats over the room now, so a
-    /// TTF label can drift next to bitmap digits "at a screen size nobody
-    /// checked". Every supported size is checked, with a whole tile of room
-    /// demanded between the tiers rather than merely no overlap.
+    /// Spec 06's gotcha, made checkable: a TTF label can drift next to bitmap
+    /// digits "at a screen size nobody checked". The tray takes the top of the
+    /// screen rather than floating over the room, so the two tiers can no longer
+    /// overlap at all — but they can still end up adjacent across the tray's
+    /// bottom edge, which is what this measures. Every supported size, with a
+    /// whole tile of room demanded between the tiers rather than merely no
+    /// overlap.
     @Test("The two text tiers stay a tile apart on every supported iPhone")
     func textTiersStayApart() {
         for phone in Self.phones {
-            let scene = BakeryScene(size: phone.size)
+            let chrome = ChromeLayout(
+                size: phone.size,
+                safeAreaTop: phone.top,
+                safeAreaBottom: phone.bottom
+            )
+            let scene = BakeryScene(size: chrome.scene.size)
             scene.scaleMode = .resizeFill
             // The busiest the room's own text ever gets: a countdown, its tag,
             // and quantity counts on the shelf.
@@ -50,20 +58,17 @@ struct MainScreenTests {
                 treats: [.chocolateChipCookie, .chocolateChipCookie, .croissant, .cake, .cake]
             ))
 
-            let layout = RoomLayout(fitting: phone.size)
-            let chrome = ChromeLayout(
-                size: phone.size,
-                safeAreaTop: phone.top,
-                safeAreaBottom: phone.bottom
-            )
+            let layout = RoomLayout(fitting: chrome.scene.size)
             let clearance = layout.tileSize
-            let bar = chrome.bar.insetBy(dx: -clearance, dy: -clearance)
+            let tray = chrome.tray.insetBy(dx: -clearance, dy: -clearance)
             let action = chrome.action.insetBy(dx: -clearance, dy: -clearance)
 
             #expect(!scene.bitmapTextFrames.isEmpty, "\(phone.name): the room drew no text to check")
-            for text in scene.bitmapTextFrames.map({ layout.inViewSpace($0) }) {
-                #expect(!bar.intersects(text),
-                        "\(phone.name): bitmap text \(text) crowds the chrome bar \(chrome.bar)")
+            for text in scene.bitmapTextFrames.map({
+                layout.inViewSpace($0).offsetBy(dx: chrome.scene.minX, dy: chrome.scene.minY)
+            }) {
+                #expect(!tray.intersects(text),
+                        "\(phone.name): bitmap text \(text) crowds the tray \(chrome.tray)")
                 #expect(!action.intersects(text),
                         "\(phone.name): bitmap text \(text) crowds the action \(chrome.action)")
             }
